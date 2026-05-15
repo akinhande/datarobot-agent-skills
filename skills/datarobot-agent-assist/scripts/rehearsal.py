@@ -495,7 +495,8 @@ def cmd_turn(session_dir, message):
     stats = TurnProgress()
     t_wall = time.monotonic()
 
-    while True:
+    max_tool_rounds = 20
+    for _round in range(max_tool_rounds):
         t0 = time.monotonic()
         resp = llm_call(token, endpoint, model, messages, tool_defs or None)
         elapsed = time.monotonic() - t0
@@ -525,6 +526,11 @@ def cmd_turn(session_dir, message):
             messages.append({"role": "assistant", "content": content})
             print(f"[Agent]: {content}")
             break
+    else:
+        progress(
+            f"Warning: reached maximum tool-call rounds ({max_tool_rounds}) without a final response. "
+            "The agent may be stuck in a tool-call loop."
+        )
 
     stats.summary(time.monotonic() - t_wall)
 
