@@ -101,18 +101,6 @@ To set one up: ask your DataRobot admin to create a dedicated user (e.g. `ci-bot
 
 > **Note:** This is purely a DataRobot concept — it has no relation to Pulumi state management or backend configuration. "Service account" here just means a non-personal DataRobot user.
 
-## When to use this skill
-
-Use this skill when you need to:
-- Set up automated testing and linting for DataRobot application templates
-- Configure CI/CD pipelines for GitLab or GitHub
-- Implement review app deployments for pull/merge requests
-- Set up continuous delivery to automatically deploy merged changes
-- Manage Pulumi state across environments
-- Securely handle secrets and credentials in CI/CD
-- Automate infrastructure provisioning with Pulumi
-- Create DevOps workflows for AI applications
-
 ## Implementation Pattern
 
 When implementing CI/CD for an application template, follow this structure:
@@ -178,107 +166,11 @@ After determining the user's CI/CD platform (GitHub/GitLab) and Pulumi backend, 
 5. **Secrets / credentials** — what variables/secrets are needed and where they live (GitHub Secrets, GitLab CI/CD variables, `.env.gpg`)
 6. **Stack migration note** — if backend was migrated from a local stack, document what was done so future contributors understand the history
 
-**Example outline** (tailor section titles and commands to the actual platform):
-
-```markdown
-# Infrastructure & CI/CD
-
-## Architecture
-This project uses **GitHub Actions** for CI/CD and **Azure Blob Storage** as the Pulumi state backend.
-
-| Component | Technology |
-|-----------|------------|
-| CI/CD platform | GitHub Actions |
-| Infrastructure as code | Pulumi (Python) |
-| State backend | Azure Blob — `azblob://dr-ai-apps-pulumi` |
-| Secrets | GPG-encrypted `.env.gpg` + GitHub Secrets |
-
-## First-time setup
-```bash
-# 1. Encrypt your .env for CI
-task infra:encrypt-secrets
-
-# 2. Push GitHub secrets
-task infra:setup-github-secrets
-
-# 3. Initialize Pulumi (sets backend + creates dev stack)
-task infra:pulumi-login-azure
-```
-
-## Available tasks
-| Task | Description |
-|------|-------------|
-| `task infra:encrypt-secrets` | GPG-encrypt `.env` → `.env.gpg` |
-| `task infra:decrypt-secrets` | Decrypt `.env.gpg` → `.env` locally |
-| `task infra:setup-github-secrets` | Push secrets to GitHub via `gh` CLI |
-| `task infra:pulumi-login-azure` | Log Pulumi in to the Azure backend |
-| `task infra:pulumi-deploy` | Deploy the current stack |
-| `task infra:pulumi-destroy` | Destroy the current stack |
-
-## How CI/CD deployments work
-- **Pull requests** — `deploy.yml` runs tests, then deploys a review stack named `github-pr-<repo>-<number>`
-- **Merge to main** — same workflow re-runs and updates the `ci` stack
-- **Cleanup** — `destroy.yml` (manual trigger) tears down a named stack
-
-## Required secrets
-| Secret | Description |
-|--------|-------------|
-| `CICD_SECRET_PASSPHRASE` | GPG passphrase for `.env.gpg` |
-| `PULUMI_ACCESS_TOKEN` | *(omit if using DIY backend)* |
-| `AZURE_STORAGE_ACCOUNT` | Azure storage account for Pulumi state |
-| `AZURE_STORAGE_KEY` | Azure storage key for Pulumi state |
-| `DATAROBOT_API_TOKEN` | DataRobot API token |
-```
-
-Adjust the table rows, task names, and stack-naming strategy to match what was actually configured. The README should be accurate enough that a new contributor can set up CI/CD without referring to any other document.
+Adjust section titles, task names, and stack-naming strategy to match what was actually configured. The README should be accurate enough that a new contributor can set up CI/CD without referring to any other document.
 
 ## Workflow examples
 
-### Example 1: Set up GitLab CI/CD with review apps
-
-**User request**: "Set up GitLab CI/CD for my application template with automated testing and manual review deployments"
-
-**Agent workflow**:
-1. Create `infra/scripts/` directory in project root: `mkdir -p infra`
-2. Copy entire scripts directory: `cp -R <skill-path>/scripts infra/scripts`
-3. Make scripts executable: `chmod +x infra/scripts/*.sh`
-4. Copy CI/CD configs to standard locations:
-   - GitLab: `cp infra/scripts/gitlab-ci.yml .gitlab-ci.yml`
-   - GitHub: `cp infra/scripts/github-*.yml .github/workflows/`
-5. Copy tasks from `infra/scripts/taskfile-snippets.yaml` to `infra/Taskfile.yaml`
-   Then add an `includes` entry to the root `Taskfile.yml` pointing to `./infra/Taskfile.yaml` — **do NOT paste tasks directly into root Taskfile.yml**
-6. Guide user to run `task infra:setup-github-secrets` or `task infra:setup-gitlab-vars`
-7. If GitHub, guide user to run `task encrypt-secrets` to encrypt `.env` file
-8. **Generate `infra/README.md`** tailored to GitLab + chosen Pulumi backend (see "Generating infra/README.md" above)
-9. Test pipeline with a sample PR/MR
-
-### Example 2: Set up GitHub Actions with encrypted secrets
-
-**User request**: "Configure GitHub Actions CI/CD with GPG-encrypted secrets and review deployments"
-
-**Agent workflow**:
-1. Create `infra/scripts/` directory: `mkdir -p infra && cp -R <skill-path>/scripts infra/scripts`
-2. Make scripts executable: `chmod +x infra/scripts/*.sh`
-3. Copy GitHub workflows: `cp infra/scripts/github-*.yml .github/workflows/`
-4. Copy `infra/scripts/taskfile-snippets.yaml` to `infra/Taskfile.yaml`: `cp infra/scripts/taskfile-snippets.yaml infra/Taskfile.yaml`
-   Add an `includes` entry for `./infra/Taskfile.yaml` to the root `Taskfile.yml` — **do NOT paste tasks directly into root Taskfile.yml**
-5. Guide user to encrypt `.env` with `task infra:encrypt-secrets`
-6. Guide user to set up GitHub secrets with `task infra:setup-github-secrets`
-7. Add encrypted `.env.gpg` to repository
-8. **Generate `infra/README.md`** tailored to GitHub Actions + chosen Pulumi backend (see "Generating infra/README.md" above)
-9. Test workflow with a sample pull request
-
-### Example 3: Configure continuous delivery
-
-**User request**: "Set up automatic deployment when changes are merged to main branch"
-
-**Agent workflow**:
-1. Add deployment job triggered on push to main branch
-2. Configure Pulumi to use persistent stack name (e.g., "ci" or "prod")
-3. Set up automatic stack selection and update
-4. Configure deployment to run only on successful tests
-5. Add deployment status notifications
-6. Document the CD process for the team
+See [`references/workflow-examples.md`](references/workflow-examples.md) for step-by-step examples covering GitLab CI/CD, GitHub Actions with GPG secrets, and continuous delivery setup.
 
 ## Using Task for workflow management
 
@@ -286,53 +178,7 @@ Application templates use [Task](https://taskfile.dev) to simplify local develop
 
 ### Example Taskfile.yaml
 
-```yaml
-version: '3'
-dotenv:
-  - .env
-includes:
-  react:
-    taskfile: ./frontend_react/react_src/Taskfile.yaml
-    dir: ./frontend_react/react_src/
-tasks:
-  install:
-    desc: 📦 Install all dependencies
-    cmds:
-      - uv venv .venv
-      - source .venv/bin/activate && uv pip install -r requirements.txt
-      - task: react:install
-
-  python-lint:
-    desc: 🧹 Lint Python code
-    cmds:
-      - ruff format .
-      - ruff check . --fix
-      - mypy --pretty .
-
-  python-lint-check:
-    desc: 🧹 Check Python linting without fixes
-    cmds:
-      - ruff format --check .
-      - ruff check .
-      - mypy --pretty .
-
-  lint:
-    deps:
-      - react:lint
-      - python-lint
-    desc: 🧹 Lint all code
-
-  lint-check:
-    deps:
-      - react:lint-check
-      - python-lint-check
-    desc: 🧹 Check linting for all code
-
-  test:
-    deps:
-      - react:test
-    desc: 🧪 Run all tests
-```
+See [`references/example-taskfile.yaml`](references/example-taskfile.yaml) for a complete example.
 
 ### Using Task in CI/CD
 
@@ -576,66 +422,6 @@ Alternatively configure in the UI: Project Settings → CI/CD → Variables. Mar
 3. **Monitor costs**: Track resource usage per environment
 4. **Auto-cleanup**: Implement automatic deletion of old review apps
 5. **Resource limits**: Set quotas to prevent runaway costs
-
-## Helper Scripts and Configuration
-
-When implementing CI/CD for an application template, create an `infra/` directory in the project root to house all CI/CD and infrastructure-related files:
-
-**Directory Structure:**
-```
-project-root/
-├── infra/
-│   ├── Taskfile.yaml       # ⚠️ CI/CD tasks go HERE — copy from infra/scripts/taskfile-snippets.yaml
-│   └── scripts/
-│       ├── setup-github-secrets.sh
-│       ├── setup-gitlab-variables.sh
-│       ├── encrypt-secrets.sh
-│       ├── decrypt-secrets.sh
-│       ├── pulumi-setup.sh
-│       ├── gitlab-ci.yml
-│       ├── github-deploy.yml
-│       ├── github-destroy.yml
-│       ├── taskfile-snippets.yaml
-│       └── README.md
-├── .gitlab-ci.yml          # Copied from infra/scripts/
-├── .github/
-│   └── workflows/
-│       ├── deploy.yml       # Copied from infra/scripts/
-│       └── destroy.yml      # Copied from infra/scripts/
-└── Taskfile.yml            # Root Taskfile — ADD ONLY an includes entry for infra/Taskfile.yaml. DO NOT add tasks here.
-```
-
-**Script reference:**
-
-| Script | Purpose |
-|--------|--------|
-| `gitlab-ci.yml` | Complete GitLab CI/CD pipeline — copy to `.gitlab-ci.yml` |
-| `github-deploy.yml` | GitHub Actions deploy workflow — copy to `.github/workflows/deploy.yml` |
-| `github-destroy.yml` | GitHub Actions destroy workflow — copy to `.github/workflows/destroy.yml` |
-| `pulumi-setup.sh` | Interactive Pulumi backend setup + CI/CD variable configuration |
-| `setup-github-secrets.sh` | Interactive GitHub secrets + variables setup via `gh` CLI |
-| `setup-gitlab-variables.sh` | Interactive GitLab CI/CD variables setup via `glab` CLI |
-| `encrypt-secrets.sh` | GPG-encrypt `.env` → `.env.gpg` for CI |
-| `decrypt-secrets.sh` | Decrypt `.env.gpg` → `.env` for local development |
-| `taskfile-snippets.yaml` | Task definitions — copy to `infra/Taskfile.yaml` |
-
-The typical first-time setup sequence:
-
-```bash
-# 1. Copy scripts and CI config
-mkdir -p infra
-cp -R <skill-path>/scripts infra/scripts
-chmod +x infra/scripts/*.sh
-cp infra/scripts/taskfile-snippets.yaml infra/Taskfile.yaml
-# Add includes entry to root Taskfile.yml — see Implementation Pattern above
-
-# 2. Configure Pulumi backend and CI/CD variables (interactive)
-./infra/scripts/pulumi-setup.sh
-
-# 3. Encrypt credentials and push
-task infra:encrypt-secrets
-git add .env.gpg infra/ && git commit -m "Add CI/CD infrastructure"
-```
 
 ## Troubleshooting
 
