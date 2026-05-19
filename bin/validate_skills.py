@@ -1,4 +1,7 @@
 #!/usr/bin/env -S uv run
+# Copyright (c) 2026 DataRobot, Inc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
