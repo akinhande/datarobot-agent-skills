@@ -1,3 +1,6 @@
+# Copyright (c) 2026 DataRobot, Inc. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Validate CODEOWNERS rules for the skills/ directory:
 - No skill directory should be owned by @datarobot-oss/datarobot-agent-skills

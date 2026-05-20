@@ -18,6 +18,32 @@ Guidelines for developing and contributing to this project.
 - Ensure the bug was not already reported in the project's Issues section.
 - Open an issue as described above.
 
+## Running e2e skill tests
+
+Skill quality is evaluated end-to-end by an LLM judge. To keep CI cheap, unchanged skills are skipped via an MD5 cache at `tests/e2e/skill_hashes.json`.
+
+### Local pre-commit hook (recommended)
+
+Run once after cloning:
+
+```
+cp .env.example .env  # fill in DATAROBOT_ENDPOINT + DATAROBOT_API_TOKEN
+task setup            # installs .githooks/ as the project hooks path
+```
+
+After that, any commit touching `skills/**` or `tests/e2e/**` will run the LLM judge on the affected skills, and — if they pass — stage the refreshed `skill_hashes.json` into the same commit. By the time the PR hits CI, the hashes already match and the e2e job is a no-op for those skills.
+
+If `DATAROBOT_ENDPOINT` / `DATAROBOT_API_TOKEN` aren't set, the hook prints a notice and skips; CI will run the judge as a safety net. To bypass the hook for a single commit: `git commit --no-verify`.
+
+### Running the suite manually
+
+```
+task test:e2e         # or: uv run --group e2e pytest tests/e2e/ -v
+task test:e2e:force   # re-evaluate every skill, ignore the cache
+```
+
+CI does not write back to `main`; if the committed cache drifts the workflow logs a warning, and the fix is to run the command above locally and commit the refreshed file.
+
 ## Responding to issues and pull requests
 
 This project's maintainers will make every effort to respond to any open issues as soon as possible.

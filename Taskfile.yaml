@@ -2,6 +2,13 @@
 version: '3'
 
 tasks:
+  setup:
+    desc: Install local git hooks (pre-commit runs skill e2e tests on changed skills)
+    cmds:
+      - git config core.hooksPath .githooks
+      - echo "Git hooks installed. Pre-commit will evaluate skills touched by each commit and update tests/e2e/skill_hashes.json
+        automatically."
+
   test:integration:
     desc: Validate all DataRobot skills (naming, structure, frontmatter)
     cmds:
