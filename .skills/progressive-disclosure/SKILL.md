@@ -13,7 +13,7 @@ Use this repo-local meta skill to split large skills into a concise `SKILL.md` p
 - Do not delete details because they seem verbose. Move details to reference files instead.
 - Do not change SDK guidance, commands, workflows, safety notes, or examples except to preserve links after moving content.
 - Do not edit plugin manifests, versions, `CODEOWNERS`, or unrelated repo metadata unless the user explicitly asks.
-- Do not create deeply nested references. Reference files should be direct siblings of `SKILL.md`.
+- Do not create deeply nested references. Reference files should be directly linked from `SKILL.md`.
 - Do not move first-use trigger guidance, required safety constraints, or critical prerequisites out of `SKILL.md`.
 - If content needs substantive editing, stop and ask the user before making that change.
 
@@ -37,6 +37,14 @@ Move long supporting content into files such as:
 - `ci-cd-patterns.md`
 
 Choose names that match the moved section. Prefer a small number of meaningful files over many tiny fragments.
+
+Use folders only when the supporting material has a clear type or grouping:
+
+- `references/` for longer conceptual guides, examples, and workflow details
+- `scripts/` for executable helpers that the skill may ask the agent to run
+- Language folders such as `python/`, `typescript/`, or `r/` when a skill supports multiple programming languages
+
+Keep these folders directly under the skill directory. `SKILL.md` should link directly to files inside them, such as `references/workflow-details.md`, without requiring the agent to follow a chain of references.
 
 ## Workflow
 
@@ -69,7 +77,7 @@ Choose names that match the moved section. Prefer a small number of meaningful f
 5. Keep links one level deep:
    - `SKILL.md` should link directly to every reference file the agent may need.
    - Reference files may link back to `SKILL.md` if useful.
-   - Avoid chains like `SKILL.md` -> `reference.md` -> `deep-reference.md`.
+   - Avoid chains like `SKILL.md` -> `references/overview.md` -> `references/deep-reference.md`.
 
 6. Validate:
    - Run `task test:integration` for structural checks.
