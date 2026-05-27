@@ -55,15 +55,29 @@ List all computed ShapMatrix objects for a model (one per partition computed).
 | `link_function` | str | Link function: `'identity'` for regression, `'logit'` for binary classification |
 | `source` | str | Partition this matrix was computed on |
 
-### Methods on result
+### Export to DataFrame or CSV
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `.get_as_dataframe()` | `pd.DataFrame` | ShapMatrix as pandas DataFrame |
-| `.get_as_csv()` | str | ShapMatrix as CSV string |
-| `.get_uri()` | str | URI of the stored matrix |
-| `.open_in_browser()` | None | Open result in browser |
-| `.sort()` | ShapMatrix | Return sorted copy |
+After `.create()` / `.compute()`, values are on the result (`matrix`, `columns`):
+
+```python
+import pandas as pd
+
+df = pd.DataFrame(result.matrix, columns=result.columns)
+```
+
+`get_as_dataframe` and `get_as_csv` are **classmethods** on `ShapMatrix` (re-fetch from the API).
+Pass the same `entity_id`, `source`, and optional kwargs used at compute time:
+
+```python
+df = ShapMatrix.get_as_dataframe(entity_id=model_id, source="validation")
+csv = ShapMatrix.get_as_csv(
+    entity_id=model_id,
+    source="externalTestSet",
+    external_dataset_id=dataset_id,
+)
+```
+
+Do not call `result.get_as_dataframe()` — that API shape is for legacy `datarobot.models.ShapMatrix`.
 
 ### Notes
 

@@ -150,4 +150,6 @@ print(pe_obj.is_multiclass())
 - `max_explanations` is capped at 100 for CSV export; use the API (`.get_rows()`) for more
 - `threshold_high` and `threshold_low` can be combined to explain only extreme predictions
 - XEMP explanations use the XEMP methodology (not SHAP); magnitudes are not comparable across models
-- For SHAP-based explanations, prefer `datarobot.insights.ShapMatrix` / `ShapPreview`.
+- For SHAP-based explanations, prefer `datarobot.insights.ShapMatrix` / `ShapPreview` with
+  `entity_id=model_id`. Export via `pd.DataFrame(result.matrix, columns=result.columns)` or
+  `ShapMatrix.get_as_dataframe(entity_id=..., source=...)` — not legacy `datarobot.models.ShapMatrix`.

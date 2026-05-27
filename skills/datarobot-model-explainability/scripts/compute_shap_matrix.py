@@ -16,6 +16,7 @@ import argparse
 import os
 from typing import Any
 
+import pandas as pd
 import datarobot as dr
 from datarobot.insights import ShapMatrix
 
@@ -38,15 +39,13 @@ def compute_shap_matrix(
         print(f"  Dataset ID: {external_dataset_id}")
 
     print(f"Computing ShapMatrix: model={model_id!r} source={source!r} ...")
-    kwargs: dict[str, object] = {"entity_id": model_id, "source": source}
-    if external_dataset_id:
-        kwargs["external_dataset_id"] = external_dataset_id
-    if data_slice_id:
-        kwargs["data_slice_id"] = data_slice_id
-    if quick_compute is not None:
-        kwargs["quick_compute"] = quick_compute
-
-    result = ShapMatrix.create(**kwargs)
+    result = ShapMatrix.create(
+        entity_id=model_id,
+        source=source,
+        data_slice_id=data_slice_id,
+        external_dataset_id=external_dataset_id,
+        quick_compute=quick_compute,
+    )
 
     print(f"  Features:   {len(result.columns)}")
     print(f"  Rows:       {len(result.matrix)}")
@@ -54,7 +53,7 @@ def compute_shap_matrix(
     print(f"  Link:       {result.link_function}")
 
     if output_path:
-        df = result.get_as_dataframe()
+        df = pd.DataFrame(result.matrix, columns=result.columns)
         df.to_csv(output_path, index=False)
         print(f"  Exported to: {output_path}")
 

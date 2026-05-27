@@ -12,8 +12,9 @@ description: >
 This skill provides comprehensive guidance for understanding model decisions, analyzing prediction
 explanations, and interpreting model behavior using DataRobot's explainability APIs.
 
-> **SDK version**: Targets `datarobot>=3.4.0`. The `datarobot.insights` module introduced
-> `ShapMatrix`, `ShapImpact`, `ShapPreview`, and `ShapDistributions` as the canonical SHAP API.
+> **SDK version**: Targets `datarobot>=3.4.0`. Use `from datarobot.insights import ShapMatrix, ...`
+> with `entity_id=model_id` — not legacy `datarobot.models.ShapMatrix` (`project_id` / `dataset_id`).
+> `ShapMatrix`, `ShapImpact`, `ShapPreview`, and `ShapDistributions` are the canonical SHAP API.
 > The older `dr.PredictionExplanations` (XEMP-based) remains available but is the secondary path.
 
 ---
@@ -27,7 +28,7 @@ explanations, and interpreting model behavior using DataRobot's explainability A
 | Aggregated feature importance via SHAP | `ShapImpact.create(entity_id=model_id)` | None |
 | SHAP value distributions across features | `ShapDistributions.create(entity_id=model_id)` | None |
 | SHAP for a filtered segment | `dr.DataSlice.create(...)` + `ShapMatrix.create(..., data_slice_id=...)` | Data slice definition |
-| XEMP-based prediction explanations | `dr.PredictionExplanations.create(...)` | Feature Impact computed; dataset uploaded |
+| XEMP-based prediction explanations | `dr.PredictionExplanations.create(...)` | Feature Impact; PE initialization; dataset uploaded |
 | Anomaly explanations (time series) | `AnomalyAssessmentRecord.compute(project_id, model_id, ...)` | Anomaly model |
 | ROC curve / lift chart / confusion matrix | `model.get_roc_curve()` / `model.get_lift_chart()` | Validation data |
 
@@ -87,6 +88,7 @@ dr.Client(
 `ShapMatrix` gives you the full SHAP value matrix: one row per prediction, one column per feature.
 
 ```python
+import pandas as pd
 from datarobot.insights import ShapMatrix
 
 model_id = "YOUR_MODEL_ID"
@@ -94,8 +96,12 @@ model_id = "YOUR_MODEL_ID"
 # Compute on validation partition (default), wait for result.
 result = ShapMatrix.create(entity_id=model_id)
 
-df = result.get_as_dataframe()
-csv = result.get_as_csv()
+# Export: matrix/columns are already on the result object
+df = pd.DataFrame(result.matrix, columns=result.columns)
+
+# Or re-fetch from the API (classmethods — not instance methods):
+df = ShapMatrix.get_as_dataframe(entity_id=model_id, source="validation")
+csv = ShapMatrix.get_as_csv(entity_id=model_id, source="validation")
 
 # Compute on a different partition, non-blocking
 job = ShapMatrix.compute(entity_id=model_id, source="holdout")
@@ -190,9 +196,10 @@ for feature in result.features:
 Use `dr.PredictionExplanations` when XEMP explanations are specifically required (e.g., certain
 regulatory contexts, or when SHAP is unavailable for the model type).
 
-**Prerequisites** (both required before calling `.create()`):
+**Prerequisites** (all required before calling `.create()`):
 1. Feature Impact must be computed: `model.request_feature_impact()` and wait
-2. Dataset must be uploaded to the AI Catalog
+2. Prediction explanations initialized: `dr.PredictionExplanationsInitialization.create(...)`
+3. Scoring dataset uploaded to the AI Catalog
 
 ```python
 import datarobot as dr
@@ -295,11 +302,13 @@ explanations = record.get_explanations_data_in_regions(regions=anomalous_regions
 # Reuse an existing record when possible
 records = AnomalyAssessmentRecord.list(project_id=project_id, model_id=model_id)
 
+# Latest explanations for the most anomalous records (no date filters)
+latest = record.get_latest_explanations()
+
 # Date-range explanations (two of start_date, end_date, or points_count required)
-latest = record.get_latest_explanations(
+ranged = record.get_explanations(
     start_date="2024-01-01T00:00:00.000000Z",
     end_date="2024-06-01T00:00:00.000000Z",
-    points_count=100,
 )
 ```
 
