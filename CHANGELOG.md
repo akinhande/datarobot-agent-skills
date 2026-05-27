@@ -11,6 +11,10 @@ Each entry should be prefixed with the affected skill folder name (for example,
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-05-27
+
+- `datarobot-model-explainability`: Updated SHAP guidance to use the current `datarobot.insights` APIs, added data slice and anomaly assessment coverage, and added reference scripts for SHAP and XEMP workflows.
+
 ## [1.2.0] - 2026-05-20
 
 First tracked release. Skills included:
