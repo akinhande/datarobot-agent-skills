@@ -1,7 +1,7 @@
 {
   "name": "datarobot-skills",
-  "version": "1.3.2",
-  "description": "DataRobot Skills for AI/ML workflows including model training, deployment, predictions, feature engineering, monitoring, data preparation, and Workload API management",
+  "version": "1.4.0",
+  "description": "DataRobot Skills for AI/ML workflows including model training, deployment, predictions, feature engineering, monitoring, data preparation, Workload API management, and OpenTelemetry tracing",
   "author": "DataRobot",
   "skills": [
     {
@@ -63,6 +63,11 @@
       "name": "datarobot-workload-api",
       "description": "Create, configure, scale, debug, observe, and roll out container workloads on DataRobot's Workload API — covers deploying containers as managed services, replica/autoscaling settings, CPU/GPU compute bundles, DataRobot credential injection, diagnosing stuck or crash-looping workloads, pulling logs/traces/metrics/service stats, and zero-downtime artifact replacement",
       "path": "skills/datarobot-workload-api/SKILL.md"
+    },
+    {
+      "name": "datarobot-otel-tracing",
+      "description": "Add DataRobot OpenTelemetry tracing to an existing CrewAI, LangGraph/LangChain, or LlamaIndex project (one that was not scaffolded from the DataRobot agent templates) so its runs, LLM calls, and tool invocations show up in the DataRobot Tracing table",
+      "path": "skills/datarobot-otel-tracing/SKILL.md"
     }
   ]
 }
