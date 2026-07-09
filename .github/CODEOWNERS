@@ -15,6 +15,9 @@
 /skills/datarobot-model-training/ @datarobot/core-modeling
 /skills/datarobot-predictions/ @datarobot/core-modeling
 
+# Skills owned by Predictive AI team
+/skills/datarobot-llm-gateway/ @akinhande
+
 # All App Framework skills are owned by the Applications team
 /skills/datarobot-app-framework-*/ @datarobot-oss/applications
 
@@ -24,6 +27,5 @@
 # Individual Contributor skills
 /skills/datarobot-discover/ @datarobot-oss/agent-skills-maintainers
 /skills/datarobot-external-agent-monitoring/ @vitali93
-/skills/datarobot-llm-gateway/ @datarobot-oss/agent-skills-maintainers
 /skills/datarobot-setup/ @amberb617
 /skills/datarobot-workload-api/ @ahamino
