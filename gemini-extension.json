@@ -68,6 +68,11 @@
       "name": "datarobot-discover",
       "description": "Discover DataRobot resources — skills, MCP servers, agents, and platform tools — by fetching the live catalog from datarobot.com and the user's own DataRobot instance",
       "path": "skills/datarobot-discover/SKILL.md"
+    },
+    {
+      "name": "datarobot-llm-gateway",
+      "description": "Configure LLM integration for a DataRobot agent application — switch between LLM Gateway, deployed LLM, external provider, or blueprint gateway modes and safely sync provider credentials into .env",
+      "path": "skills/datarobot-llm-gateway/SKILL.md"
     }
   ]
 }

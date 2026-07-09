@@ -43,6 +43,7 @@ Each entry should be prefixed with the affected skill folder name (for example,
 
 ### Added
 - `datarobot-agent-assist`: New `agent-assist-simulate` swarm skill — adversarial scenario generation, multi-turn simulation, convergence loop, and evaluation reporting.
+- `datarobot-llm-gateway`: New skill for configuring LLM integration for a DataRobot agent application. Interviews the user, writes `.datarobot/llm-config.json` and   `.secrets/llm-external.env`, then runs `sync_llm_env.py` to merge into `.env` and remove the intermediate config files on success. Supports `gateway`, `deployed`, `external`, and `blueprint-gateway` modes. The script reads it from `.env`/env and emits only the model catalog. `sync_llm_env.py`, validates `llm_deployment_id`, and backs up before force-overwriting credential templates.
 
 ### Changed
 - `datarobot-agent-assist`: Move `check_codespace.py` into `agent-assist-build/scripts/` alongside `env_utils.py`.
