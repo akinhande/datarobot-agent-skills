@@ -41,14 +41,6 @@ PROVIDER_REQUIRED_KEYS = {
     "togetherai": ["TOGETHERAI_API_KEY"],
 }
 
-BLOCK_START = "# --- LLM configuration (managed by datarobot-llm-gateway skill) ---"
-BLOCK_END = "# --- end LLM configuration ---"
-LEGACY_STARTS = {
-    "# --- LLM configuration (managed by datarobot-llm-config skill) ---",
-    "# --- LLM configuration (managed by datarobot-llm-datarobot-llm-gateway skill) ---",
-}
-
-
 def _template(provider: str) -> str:
     header = f"# {provider} — fill values locally. Do not commit this file.\n"
     return header + "".join(f"{key}=\n" for key in PROVIDER_REQUIRED_KEYS[provider])
@@ -80,20 +72,12 @@ def _read_kv(path: Path) -> dict[str, str]:
 
 
 def parse_dotenv(path: Path) -> list[str]:
-    """Return .env lines with the managed block and any managed keys stripped out."""
+    """Return .env lines with any managed keys stripped out."""
     if not path.exists():
         return []
-    kept, in_block = [], False
+    kept = []
     for line in path.read_text(encoding="utf-8").splitlines():
         stripped = line.strip()
-        if stripped == BLOCK_START or stripped in LEGACY_STARTS:
-            in_block = True
-            continue
-        if stripped == BLOCK_END:
-            in_block = False
-            continue
-        if in_block:
-            continue
         if "=" in stripped and not stripped.startswith("#"):
             if stripped.partition("=")[0].strip() in LLM_MANAGED_KEYS:
                 continue
@@ -181,10 +165,9 @@ def cmd_sync(args: argparse.Namespace) -> int:
         return 1
 
     preserved = parse_dotenv(env_path)
-    out = preserved + ([""] if preserved else []) + [BLOCK_START]
+    out = preserved + ([""] if preserved else [])
     for key in sorted(llm_vars):
         out.append(f"{key}={_quote(llm_vars[key])}")
-    out.append(BLOCK_END)
     env_path.write_text("\n".join(out) + "\n", encoding="utf-8")
 
     print(f"Synced {len(llm_vars)} LLM variable(s) into {env_path}")
