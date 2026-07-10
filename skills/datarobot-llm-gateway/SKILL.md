@@ -59,6 +59,23 @@ Post the menu below verbatim (letters + integration keyword + short blurb) and
 wait for the user's reply:
 
 ```
+Variable: INFRA_ENABLE_LLM
+──────────────────────────
+
+Choose your LLM integration.
+
+  - For the simplest setup, select DataRobot's "LLM Gateway".
+  - If you already have a custom LLM deployed on DataRobot and a deployment
+    ID, select "DataRobot Deployed LLM" (this sets USE_DATAROBOT_LLM_GATEWAY=0).
+  - If you want to use your own LLM provider credentials instead of the
+    LLM Gateway (e.g. Azure OpenAI, AWS Bedrock, GCP VertexAI, Anthropic,
+    Cohere, TogetherAI), select "External LLM".
+  - If you need full DataRobot governance and monitoring with LLM Blueprint
+    support, select "LLM Blueprint with LLM Gateway" — the most
+    production-ready option.
+
+Default: gateway_direct.py
+
 Which LLM integration would you like? Pick one:
   A) gateway            — DataRobot-managed LLM Gateway (recommended default)
   B) deployed           — an LLM already deployed on DataRobot
