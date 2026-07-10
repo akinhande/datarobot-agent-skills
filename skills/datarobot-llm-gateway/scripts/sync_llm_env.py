@@ -23,23 +23,43 @@ INTEGRATION_TO_INFRA = {
     "blueprint-gateway": "blueprint_with_llm_gateway.py",
 }
 
-LLM_MANAGED_KEYS = frozenset({
-    "INFRA_ENABLE_LLM", "LLM_DEFAULT_MODEL", "LLM_DEPLOYMENT_ID",
-    "LLM_DEFAULT_LLM_ID", "LLM_DEFAULT_LLM_NAME", "USE_DATAROBOT_LLM_GATEWAY",
-    "OPENAI_API_KEY", "OPENAI_API_BASE", "OPENAI_API_DEPLOYMENT_ID", "OPENAI_API_VERSION",
-    "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION_NAME",
-    "VERTEXAI_APPLICATION_CREDENTIALS", "VERTEXAI_SERVICE_ACCOUNT",
-    "ANTHROPIC_API_KEY", "COHERE_API_KEY", "TOGETHERAI_API_KEY",
-})
+LLM_MANAGED_KEYS = frozenset(
+    {
+        "INFRA_ENABLE_LLM",
+        "LLM_DEFAULT_MODEL",
+        "LLM_DEPLOYMENT_ID",
+        "LLM_DEFAULT_LLM_ID",
+        "LLM_DEFAULT_LLM_NAME",
+        "USE_DATAROBOT_LLM_GATEWAY",
+        "OPENAI_API_KEY",
+        "OPENAI_API_BASE",
+        "OPENAI_API_DEPLOYMENT_ID",
+        "OPENAI_API_VERSION",
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_REGION_NAME",
+        "VERTEXAI_APPLICATION_CREDENTIALS",
+        "VERTEXAI_SERVICE_ACCOUNT",
+        "ANTHROPIC_API_KEY",
+        "COHERE_API_KEY",
+        "TOGETHERAI_API_KEY",
+    }
+)
 
 PROVIDER_REQUIRED_KEYS = {
-    "azure": ["OPENAI_API_KEY", "OPENAI_API_BASE", "OPENAI_API_DEPLOYMENT_ID", "OPENAI_API_VERSION"],
+    "azure": [
+        "OPENAI_API_KEY",
+        "OPENAI_API_BASE",
+        "OPENAI_API_DEPLOYMENT_ID",
+        "OPENAI_API_VERSION",
+    ],
     "bedrock": ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION_NAME"],
     "vertexai": ["VERTEXAI_APPLICATION_CREDENTIALS", "VERTEXAI_SERVICE_ACCOUNT"],
     "anthropic": ["ANTHROPIC_API_KEY"],
     "cohere": ["COHERE_API_KEY"],
     "togetherai": ["TOGETHERAI_API_KEY"],
 }
+
 
 def _template(provider: str) -> str:
     header = f"# {provider} — fill values locally. Do not commit this file.\n"
@@ -110,7 +130,9 @@ def build_llm_env(config: dict) -> dict[str, str]:
         if not re.fullmatch(r"[0-9a-f]{24}", dep_id):
             raise ValueError("llm_deployment_id must be 24 lowercase hex chars")
         env["LLM_DEPLOYMENT_ID"] = dep_id
-        env["LLM_DEFAULT_MODEL"] = config.get("llm_model", "datarobot/datarobot-deployed-llm")
+        env["LLM_DEFAULT_MODEL"] = config.get(
+            "llm_model", "datarobot/datarobot-deployed-llm"
+        )
         env["USE_DATAROBOT_LLM_GATEWAY"] = "0"
 
     else:  # external
@@ -130,9 +152,7 @@ def build_llm_env(config: dict) -> dict[str, str]:
         creds = _read_kv(creds_path)
         missing = [k for k in PROVIDER_REQUIRED_KEYS[provider] if not creds.get(k)]
         if missing:
-            raise ValueError(
-                f"Missing keys in {creds_path}: {', '.join(missing)}"
-            )
+            raise ValueError(f"Missing keys in {creds_path}: {', '.join(missing)}")
         env["LLM_DEFAULT_MODEL"] = model
         for key in PROVIDER_REQUIRED_KEYS[provider]:
             env[key] = creds[key]
