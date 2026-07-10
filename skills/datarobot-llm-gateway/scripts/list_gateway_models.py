@@ -62,11 +62,13 @@ def main() -> int:
         name = m.get("model", "")
         if name and not name.startswith("datarobot/"):
             name = f"datarobot/{name}"
-        models.append({
-            "name": name,
-            "provider": m.get("provider", ""),
-            "context_size": m.get("contextSize", 0),
-        })
+        models.append(
+            {
+                "name": name,
+                "provider": m.get("provider", ""),
+                "context_size": m.get("contextSize", 0),
+            }
+        )
     models.sort(key=lambda m: (m["provider"], m["name"]))
     print(json.dumps(models, indent=2))
     return 0
