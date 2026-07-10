@@ -119,6 +119,11 @@ def build_llm_env(config: dict) -> dict[str, str]:
             raise ValueError(
                 f"external_provider must be one of: {', '.join(PROVIDER_REQUIRED_KEYS)}"
             )
+        model = (config.get("llm_model") or "").strip()
+        if not model:
+            raise ValueError(
+                f"llm_model is required for external mode (provider: {provider})"
+            )
         creds_path = Path(config.get("credentials_file", ".secrets/llm-external.env"))
         if not creds_path.exists():
             raise ValueError(f"Credentials file not found: {creds_path}")
@@ -128,7 +133,7 @@ def build_llm_env(config: dict) -> dict[str, str]:
             raise ValueError(
                 f"Missing keys in {creds_path}: {', '.join(missing)}"
             )
-        env["LLM_DEFAULT_MODEL"] = config.get("llm_model", "azure-openai-gpt-5-mini")
+        env["LLM_DEFAULT_MODEL"] = model
         for key in PROVIDER_REQUIRED_KEYS[provider]:
             env[key] = creds[key]
 
