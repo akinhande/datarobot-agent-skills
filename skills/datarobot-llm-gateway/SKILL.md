@@ -2,18 +2,16 @@
 name: datarobot-llm-gateway
 description: >-
   Use when the user wants to configure LLM integration for a DataRobot agent
-  application — change LLM model, switch between LLM Gateway / deployed /
+  application. This skill helps to change LLM model, switch between LLM Gateway / deployed /
   external / blueprint-gateway, or set up provider credentials. The skill
-  interviews the user, writes .datarobot/llm-config.json, then runs
-  sync_llm_env.py to merge into .env. External-provider credentials live
-  per-user under $XDG_CONFIG_HOME/datarobot/llm-<provider>.env. Never paste
-  secrets in chat.
+  interviews the user, then runs sync_llm_env.py with the chosen values as
+  CLI args to merge into .env. 
 ---
 
-# DataRobot LLM gateway configuration (spec + sync)
+# DataRobot LLM gateway configuration
 
-Configure LLM integration **without hand-editing `.env`**. The skill writes structured
-config; `sync_llm_env.py` merges into `.env`.
+Configure LLM integration **without hand-editing `.env`**. The skill drives
+`sync_llm_env.py` with the user's answers as CLI arguments.
 
 ## Resolve script path once per session
 
@@ -33,10 +31,15 @@ ls <skill_scripts_dir>/sync_llm_env.py
    stdout. Do not run `cat drconfig.yaml`, `cat .env`, `env | grep TOKEN`,
    `echo $DATAROBOT_API_TOKEN`, `curl -H "Authorization: Bearer $..."`, or
    any equivalent one-liner
-3. **Never** write secrets into `.datarobot/llm-config.json` or tracked files
+3. **Never** pass secrets as CLI args to `sync_llm_env.py` or write them to
+   tracked files
 4. **Never** set provider credentials (`AWS_*`, `OPENAI_*`, etc.) for `gateway` or `blueprint-gateway`
 5. Only `sync_llm_env.py` merges LLM keys into `.env` — do not edit `.env` manually
 6. Run all commands from **project root**
+7. Pressing enter in chat does nothing. Don't tell the user to "press enter to
+   accept the default" or "hit return". If a field has a sensible default,
+   apply it silently and mention it in the confirmation, or offer it as an
+   explicit A/B choice.
 
 ---
 
@@ -66,25 +69,23 @@ Post the menu below verbatim (letters + integration keyword + short blurb) and
 wait for the user's reply:
 
 ```
-Variable: INFRA_ENABLE_LLM
-──────────────────────────
-
 Choose your LLM integration.
 
-  - For the simplest setup, select DataRobot's "LLM Gateway".
-  - If you already have a custom LLM deployed on DataRobot and a deployment
-    ID, select "DataRobot Deployed LLM" (this sets USE_DATAROBOT_LLM_GATEWAY=0).
+  - For the simplest setup, pick LLM Gateway.
+  - If you already have a custom LLM deployed on DataRobot with a
+    deployment ID, pick DataRobot Deployed LLM (this sets
+    USE_DATAROBOT_LLM_GATEWAY=0).
   - If you want to use your own LLM provider credentials instead of the
     LLM Gateway (e.g. Azure OpenAI, AWS Bedrock, GCP VertexAI, Anthropic,
-    Cohere, TogetherAI), select "External LLM".
-  - If you need full DataRobot governance and monitoring with LLM Blueprint
-    support, select "LLM Blueprint with LLM Gateway" — the most
+    Cohere, TogetherAI), pick External LLM.
+  - If you need full DataRobot governance and monitoring with LLM
+    Blueprint support, pick LLM Blueprint with LLM Gateway. This is the most
     production-ready option.
 
-Default: gateway_direct.py
+Which LLM integration would you like? Reply with A, B, C, or D
+(or the keyword: gateway / deployed / external / blueprint-gateway):
 
-Which LLM integration would you like? Pick one:
-  A) gateway            — DataRobot-managed LLM Gateway (recommended default)
+  A) gateway            — DataRobot-managed LLM Gateway (recommended)
   B) deployed           — an LLM already deployed on DataRobot
   C) external           — bring your own provider (Azure, Bedrock, Vertex, Anthropic, …)
   D) blueprint-gateway  — LLM Blueprint routed through the LLM Gateway
@@ -157,20 +158,31 @@ reply is anything else, re-ask the question — do not guess.
      … one labelled row per entry until every JSON element is listed …
    ```
 
-3. Wait for the letter (or a full model id typed by the user), then set
-   `llm_model` to that id. The sync script normalizes to a `datarobot/` prefix
-   if the user omits it.
-4. For `blueprint-gateway` only, optional: `llm_llm_id` (default
-   `azure-openai-gpt-5-mini`) — skip unless the user asks about it.
+3. Wait for the letter (or a full model id typed by the user), then use that
+   id as `--llm-model` in Step 3. The sync script normalizes to a `datarobot/`
+   prefix if the user omits it.
+4. For `blueprint-gateway` only, offer an explicit A/B choice for
+   `--llm-llm-id`:
+
+   ```
+   Which LLM blueprint id?
+     A) azure-openai-gpt-5-mini (recommended)
+     B) type a different id
+   ```
+
+   Skip this altogether if the user hasn't shown interest in tuning it.
 
 ### `deployed`
 
-1. Ask: `llm_deployment_id` (24-char hex).
-2. Optional: `llm_model` (default `datarobot/datarobot-deployed-llm`).
+1. Ask: `llm_deployment_id` (24 lowercase hex characters). If the user's
+   answer doesn't match `^[0-9a-f]{24}$`, re-ask.
+2. For `llm_model`, use `datarobot/datarobot-deployed-llm` unless the user
+   explicitly specifies something else. Do not ask them to "press enter to
+   accept" — just apply it and mention it in the sync confirmation.
 
 ### `external`
 
-1. Present the provider list as a lettered menu and wait for the user's choice:
+1. List providers as a lettered menu and wait for the user's reply:
 
    ```
    Which external provider?
@@ -182,97 +194,110 @@ reply is anything else, re-ask the question — do not guess.
      F) togetherai
    ```
 
-   Map the letter back to the `external_provider` value.
-2. Ask: `llm_model` (default `azure-openai-gpt-5-mini` for Azure).
-3. Provider credentials live at
-   `$XDG_CONFIG_HOME/datarobot/llm-<provider>.env` (default
-   `~/.config/datarobot/llm-<provider>.env`) — **per-user, alongside the
-   `drconfig.yaml` that `dr auth login` populates**, not inside the project.
+   Accept the letter or the keyword. Re-ask if the reply doesn't match.
+2. Ask for `llm_model`. For Azure, offer an explicit A/B choice:
 
-   On first run in a new mode the sync script (Step 4) creates the file as a
-   template with the required keys blank and exits with instructions. **Do
-   not create the file yourself, do not `cat` it, do not ask the user to
-   paste values in chat**, and do not write any credentials into
-   `.datarobot/llm-config.json`.
+   ```
+   Which default llm model?
+     A) azure-openai-gpt-5-mini (recommended)
+     B) type a different model id
+   ```
+
+   For other providers, ask the user to type the model id — there is no
+   sensible default to offer.
+3. **Announce the credential requirements up front** — do not let the user
+   discover them via the sync error message. Once you know the provider,
+   tell the user exactly which keys they'll need to fill in and where the
+   file lives.
+
+   Per-provider required keys:
+
+   | Provider | Required env vars |
+   |----------|-------------------|
+   | `azure` | `OPENAI_API_KEY`, `OPENAI_API_BASE`, `OPENAI_API_DEPLOYMENT_ID`, `OPENAI_API_VERSION` |
+   | `bedrock` | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION_NAME` |
+   | `vertexai` | `VERTEXAI_APPLICATION_CREDENTIALS`, `VERTEXAI_SERVICE_ACCOUNT` |
+   | `anthropic` | `ANTHROPIC_API_KEY` |
+   | `cohere` | `COHERE_API_KEY` |
+   | `togetherai` | `TOGETHERAI_API_KEY` |
+
+   Post this to the user (substitute the real provider + keys):
+
+   ```
+   For <provider>, I'll need these values in a per-user credentials file:
+     ~/.config/datarobot/llm-<provider>.env (or $XDG_CONFIG_HOME/...)
+
+     <KEY_1>
+     <KEY_2>
+     ...
+
+   Next step (Step 3) will create that file as a blank template if it
+   doesn't exist. Please fill it in your own editor — do not paste the
+   values in chat — then tell me "credentials ready" and I'll re-run the
+   sync.
+   ```
+
+   Do not create the file yourself, do not `cat` it, and do not accept
+   secret values in chat.
 
 ---
 
-## Step 3 — Write `.datarobot/llm-config.json`
+## Step 3 — Sync into `.env`
 
-Write JSON (no secrets). Examples:
+Run the sync script with the values collected in Step 2 as CLI args. No
+intermediate config file, no JSON to write. Examples for each mode:
 
 **Gateway:**
 
-```json
-{
-  "integration": "gateway",
-  "llm_model": "datarobot/azure/o4-mini"
-}
+```shell
+python <skill_scripts_dir>/sync_llm_env.py \
+  --integration gateway \
+  --llm-model datarobot/azure/o4-mini
 ```
 
-**Blueprint-gateway:**
-
-```json
-{
-  "integration": "blueprint-gateway",
-  "llm_model": "datarobot/azure/o4-mini",
-  "llm_llm_id": "azure-openai-gpt-5-mini"
-}
-```
-
-**Deployed:**
-
-```json
-{
-  "integration": "deployed",
-  "llm_deployment_id": "6510c7b7c4f3f9407e24a849",
-  "llm_model": "datarobot/datarobot-deployed-llm"
-}
-```
-
-**External (Azure example):**
-
-```json
-{
-  "integration": "external",
-  "external_provider": "azure",
-  "llm_model": "azure-openai-gpt-5-mini"
-}
-```
-
----
-
-## Step 4 — Sync into `.env`
-
-Pass `--delete-config` so the intermediate `llm-config.json` is removed once the
-merge succeeds — durable state lives in `.env`:
+**Blueprint-gateway** (omit `--llm-llm-id` unless the user set one):
 
 ```shell
 python <skill_scripts_dir>/sync_llm_env.py \
-  --config .datarobot/llm-config.json \
-  --env-file .env \
-  --delete-config
+  --integration blueprint-gateway \
+  --llm-model datarobot/azure/o4-mini \
+  --llm-llm-id azure-openai-gpt-5-mini
 ```
 
-The script only deletes the config **after** a successful write; if the sync
-fails, the config file is preserved so the user can fix and retry.
+**Deployed** (omit `--llm-model` to use the `datarobot/datarobot-deployed-llm`
+default):
 
-For **external mode**, the sync reads provider credentials from
-`$XDG_CONFIG_HOME/datarobot/llm-<provider>.env` and merges them into `.env`.
+```shell
+python <skill_scripts_dir>/sync_llm_env.py \
+  --integration deployed \
+  --llm-deployment-id 6510c7b7c4f3f9407e24a849
+```
 
-- **If the file doesn't exist**, the script writes a blank template at that
-  path and exits with the path and the list of required keys. Relay the
-  exact path and key list to the user, tell them to fill in the file in
-  their own editor, then re-run the same sync command. Do not offer to
-  create the file for them and do not accept values in chat.
+**External:**
+
+```shell
+python <skill_scripts_dir>/sync_llm_env.py \
+  --integration external \
+  --external-provider azure \
+  --llm-model azure-openai-gpt-5-mini
+```
+
+For external mode, the script also reads provider credentials from
+`$XDG_CONFIG_HOME/datarobot/llm-<provider>.env`:
+
+- **If the file doesn't exist**, the script writes a blank template there
+  and exits with the path plus the required key list. Relay that verbatim
+  to the user, tell them to fill it in their own editor, then re-run the
+  same command. Do not offer to create the file for them and do not accept
+  values in chat.
 - **If the file exists but is incomplete**, the script prints the missing
-  keys and exits. Same instruction: user edits the file, then re-runs.
+  keys and exits. Same instruction: user edits, then re-runs.
 - **If the file is complete**, the sync merges the credentials into `.env`
   in one shot.
 
 ---
 
-## Step 5 — Validate and hand off
+## Step 4 — Validate and hand off
 
 **`dr dotenv validate` echoes the full `.env` (including `DATAROBOT_API_TOKEN`)
 to stdout.** If you run it without redirection, the token lands in the chat
