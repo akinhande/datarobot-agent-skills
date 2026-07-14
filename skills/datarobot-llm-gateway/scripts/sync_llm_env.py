@@ -1,17 +1,26 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 DataRobot, Inc. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-"""Merge LLM config + optional credentials file into project .env.
+"""Merge LLM configuration into project .env.
+
+For external mode, provider credentials are read from
+`$XDG_CONFIG_HOME/datarobot/llm-<provider>.env` (default
+`~/.config/datarobot/llm-<provider>.env`) — per-user, reusable across
+projects, alongside the credentials `dr auth login` writes to `drconfig.yaml`.
+
+If the file is missing or incomplete, the script writes a template with the
+required keys blank and exits so the user can fill it in. The assistant never
+sees the values.
 
 Usage:
-  python sync_llm_env.py write-template --provider azure --output .secrets/llm-external.env
-  python sync_llm_env.py sync --config .datarobot/llm-config.json --env-file .env
+  python sync_llm_env.py --config .datarobot/llm-config.json --env-file .env
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -24,30 +33,7 @@ INTEGRATION_TO_INFRA = {
     "blueprint-gateway": "blueprint_with_llm_gateway.py",
 }
 
-LLM_MANAGED_KEYS = frozenset(
-    {
-        "INFRA_ENABLE_LLM",
-        "LLM_DEFAULT_MODEL",
-        "LLM_DEPLOYMENT_ID",
-        "LLM_DEFAULT_LLM_ID",
-        "LLM_DEFAULT_LLM_NAME",
-        "USE_DATAROBOT_LLM_GATEWAY",
-        "OPENAI_API_KEY",
-        "OPENAI_API_BASE",
-        "OPENAI_API_DEPLOYMENT_ID",
-        "OPENAI_API_VERSION",
-        "AWS_ACCESS_KEY_ID",
-        "AWS_SECRET_ACCESS_KEY",
-        "AWS_REGION_NAME",
-        "VERTEXAI_APPLICATION_CREDENTIALS",
-        "VERTEXAI_SERVICE_ACCOUNT",
-        "ANTHROPIC_API_KEY",
-        "COHERE_API_KEY",
-        "TOGETHERAI_API_KEY",
-    }
-)
-
-PROVIDER_REQUIRED_KEYS = {
+PROVIDER_KEYS = {
     "azure": [
         "OPENAI_API_KEY",
         "OPENAI_API_BASE",
@@ -61,14 +47,21 @@ PROVIDER_REQUIRED_KEYS = {
     "togetherai": ["TOGETHERAI_API_KEY"],
 }
 
+# Keys owned by this script — stripped from .env on every re-sync so mode
+# switches don't leave stale entries (e.g. bedrock → gateway clears AWS_*).
+LLM_MANAGED_KEYS = frozenset(
+    {"INFRA_ENABLE_LLM", "LLM_DEFAULT_MODEL", "LLM_DEPLOYMENT_ID",
+     "LLM_DEFAULT_LLM_ID", "LLM_DEFAULT_LLM_NAME", "USE_DATAROBOT_LLM_GATEWAY"}
+    | {k for keys in PROVIDER_KEYS.values() for k in keys}
+)
 
-def _template(provider: str) -> str:
-    header = f"# {provider} — fill values locally. Do not commit this file.\n"
-    return header + "".join(f"{key}=\n" for key in PROVIDER_REQUIRED_KEYS[provider])
+
+def _config_dir() -> Path:
+    root = os.getenv("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
+    return Path(root) / "datarobot"
 
 
 def _quote(value: str) -> str:
-    """Single-quote if `$` is present (blocks interpolation); otherwise minimal quoting."""
     if not value:
         return '""'
     if "$" in value:
@@ -79,7 +72,7 @@ def _quote(value: str) -> str:
 
 
 def _read_kv(path: Path) -> dict[str, str]:
-    result = {}
+    result: dict[str, str] = {}
     for line in path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
@@ -92,8 +85,15 @@ def _read_kv(path: Path) -> dict[str, str]:
     return result
 
 
+def _write_provider_template(provider: str, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = [f"# DataRobot LLM — {provider} provider credentials (per-user).",
+             "# Fill each value below. Do not commit this file.", ""]
+    lines += [f"{key}=" for key in PROVIDER_KEYS[provider]]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def parse_dotenv(path: Path) -> list[str]:
-    """Return .env lines with any managed keys stripped out."""
     if not path.exists():
         return []
     kept = []
@@ -138,44 +138,44 @@ def build_llm_env(config: dict[str, Any]) -> dict[str, str]:
 
     else:  # external
         provider = (config.get("external_provider") or "").strip()
-        if provider not in PROVIDER_REQUIRED_KEYS:
+        if provider not in PROVIDER_KEYS:
             raise ValueError(
-                f"external_provider must be one of: {', '.join(PROVIDER_REQUIRED_KEYS)}"
+                f"external_provider must be one of: {', '.join(sorted(PROVIDER_KEYS))}"
             )
         model = (config.get("llm_model") or "").strip()
         if not model:
             raise ValueError(
                 f"llm_model is required for external mode (provider: {provider})"
             )
-        creds_path = Path(config.get("credentials_file", ".secrets/llm-external.env"))
+        creds_path = _config_dir() / f"llm-{provider}.env"
         if not creds_path.exists():
-            raise ValueError(f"Credentials file not found: {creds_path}")
+            _write_provider_template(provider, creds_path)
+            raise ValueError(
+                f"Wrote credential template to {creds_path}. "
+                f"Fill in {', '.join(PROVIDER_KEYS[provider])} and re-run this "
+                "command. Do not paste the values in chat."
+            )
         creds = _read_kv(creds_path)
-        missing = [k for k in PROVIDER_REQUIRED_KEYS[provider] if not creds.get(k)]
+        missing = [k for k in PROVIDER_KEYS[provider] if not creds.get(k)]
         if missing:
-            raise ValueError(f"Missing keys in {creds_path}: {', '.join(missing)}")
+            raise ValueError(
+                f"{creds_path} is missing values for: {', '.join(missing)}. "
+                "Edit the file, then re-run."
+            )
         env["LLM_DEFAULT_MODEL"] = model
-        for key in PROVIDER_REQUIRED_KEYS[provider]:
+        for key in PROVIDER_KEYS[provider]:
             env[key] = creds[key]
 
     return env
 
 
-def cmd_write_template(args: argparse.Namespace) -> int:
-    if args.provider not in PROVIDER_REQUIRED_KEYS:
-        print(f"Unknown provider '{args.provider}'", file=sys.stderr)
-        return 1
-    output = Path(args.output)
-    if output.exists() and not args.force:
-        print(f"Refusing to overwrite {output} (use --force)", file=sys.stderr)
-        return 1
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(_template(args.provider), encoding="utf-8")
-    print(f"Wrote credential template: {output}")
-    return 0
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Sync LLM config into .env")
+    parser.add_argument("--config", default=".datarobot/llm-config.json")
+    parser.add_argument("--env-file", default=".env")
+    parser.add_argument("--delete-config", action="store_true")
+    args = parser.parse_args()
 
-
-def cmd_sync(args: argparse.Namespace) -> int:
     config_path = Path(args.config)
     env_path = Path(args.env_file)
 
@@ -205,31 +205,11 @@ def cmd_sync(args: argparse.Namespace) -> int:
         print(f"Deleted {config_path}")
 
     print(
-        "\nNext (user should run in their own terminal — these echo secrets):\n"
+        "\nNext (run in your terminal — these echo secrets):\n"
         "  dr dotenv validate\n"
         "  dr task run infra:up-yes"
     )
     return 0
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Sync LLM config into .env")
-    sub = parser.add_subparsers(dest="command", required=True)
-
-    wt = sub.add_parser("write-template")
-    wt.add_argument("--provider", required=True)
-    wt.add_argument("--output", default=".secrets/llm-external.env")
-    wt.add_argument("--force", action="store_true")
-    wt.set_defaults(func=cmd_write_template)
-
-    sync = sub.add_parser("sync")
-    sync.add_argument("--config", default=".datarobot/llm-config.json")
-    sync.add_argument("--env-file", default=".env")
-    sync.add_argument("--delete-config", action="store_true")
-    sync.set_defaults(func=cmd_sync)
-
-    args = parser.parse_args()
-    return int(args.func(args))
 
 
 if __name__ == "__main__":

@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """List active LLM Gateway models as JSON.
 
-Reads DATAROBOT_ENDPOINT / DATAROBOT_API_TOKEN from .env (if present) or the
-environment. The token is used to authenticate the request and is never emitted
-in the output.
+Reads DataRobot endpoint and API token from `$XDG_CONFIG_HOME/datarobot/drconfig.yaml`
+(default `~/.config/datarobot/drconfig.yaml`), the file populated by `dr auth login`.
+The token is used to authenticate the request and is never emitted in the output.
 
 Usage: python list_gateway_models.py
 """
@@ -14,33 +14,39 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 
-def _from_env_file(key: str) -> str | None:
-    path = Path(".env")
+def _load_drconfig() -> tuple[str | None, str | None]:
+    """Return (endpoint, token) from drconfig.yaml, or (None, None) if unavailable."""
+    root = os.getenv("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
+    path = Path(root) / "datarobot" / "drconfig.yaml"
     if not path.exists():
-        return None
+        return None, None
+    endpoint, token = None, None
     for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line.startswith(f"{key}="):
-            value = line.split("=", 1)[1].strip()
-            if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
-                value = value[1:-1]
-            return value
-    return None
+        m = re.match(r"^\s*(endpoint|token)\s*:\s*(.+?)\s*$", line)
+        if not m:
+            continue
+        key, value = m.group(1), m.group(2).strip("'\"")
+        if key == "endpoint":
+            endpoint = value
+        else:
+            token = value
+    return endpoint, token
 
 
 def main() -> int:
-    endpoint = _from_env_file("DATAROBOT_ENDPOINT") or os.getenv("DATAROBOT_ENDPOINT")
-    token = _from_env_file("DATAROBOT_API_TOKEN") or os.getenv("DATAROBOT_API_TOKEN")
+    endpoint, token = _load_drconfig()
     if not endpoint or not token:
         print(
-            "Error: DATAROBOT_ENDPOINT or DATAROBOT_API_TOKEN not set. "
-            "Run `dr dotenv update`.",
+            "Error: DataRobot credentials not found in "
+            "$XDG_CONFIG_HOME/datarobot/drconfig.yaml. "
+            "Run `dr auth login` to authenticate.",
             file=sys.stderr,
         )
         return 1

@@ -4,9 +4,10 @@ description: >-
   Use when the user wants to configure LLM integration for a DataRobot agent
   application — change LLM model, switch between LLM Gateway / deployed /
   external / blueprint-gateway, or set up provider credentials. The skill
-  interviews the user step by step, writes .datarobot/llm-config.json, plans
-  .secrets/ for external providers, then runs sync_llm_env.py to merge into
-  .env. Never paste secrets in chat.
+  interviews the user, writes .datarobot/llm-config.json, then runs
+  sync_llm_env.py to merge into .env. External-provider credentials live
+  per-user under $XDG_CONFIG_HOME/datarobot/llm-<provider>.env. Never paste
+  secrets in chat.
 ---
 
 # DataRobot LLM gateway configuration (spec + sync)
@@ -25,24 +26,30 @@ ls <skill_scripts_dir>/sync_llm_env.py
 ## Hard rules
 
 1. **Never** ask the user to paste API keys or `DATAROBOT_API_TOKEN` in chat
-2. **Never** read, copy, echo, or pass `DATAROBOT_API_TOKEN` yourself. Only the
-   bundled scripts touch the token; they read it from `.env` / environment and
-   never emit it to stdout. Do not run `cat .env`, `env | grep TOKEN`,
-   `echo $DATAROBOT_API_TOKEN`, `curl -H "Authorization: Bearer $..."`, or any
-   equivalent one-liner
+2. **Never** read, copy, echo, or pass `DATAROBOT_API_TOKEN` yourself. The
+   token lives in `$XDG_CONFIG_HOME/datarobot/drconfig.yaml` (default
+   `~/.config/datarobot/drconfig.yaml`), populated by `dr auth login`. Only
+   `list_gateway_models.py` reads that file; it never emits the token to
+   stdout. Do not run `cat drconfig.yaml`, `cat .env`, `env | grep TOKEN`,
+   `echo $DATAROBOT_API_TOKEN`, `curl -H "Authorization: Bearer $..."`, or
+   any equivalent one-liner
 3. **Never** write secrets into `.datarobot/llm-config.json` or tracked files
 4. **Never** set provider credentials (`AWS_*`, `OPENAI_*`, etc.) for `gateway` or `blueprint-gateway`
 5. Only `sync_llm_env.py` merges LLM keys into `.env` — do not edit `.env` manually
 6. Run all commands from **project root**
-7. After sync: `dr dotenv validate` then remind user: `dr task run infra:up-yes`
 
 ---
 
 ## Step 0 — Prerequisites
 
-1. Project root must exist (`.datarobot/cli/llm.yml` present)
-2. If no `.env`: tell user to run `dr dotenv setup --if-needed` or `dr start` first (base vars only)
-3. DataRobot auth: `dr dotenv update` (do not set `DATAROBOT_API_TOKEN` via this skill)
+1. Project root must exist (`.datarobot/cli/llm.yml` present).
+2. **DataRobot auth** — check that
+   `$XDG_CONFIG_HOME/datarobot/drconfig.yaml` (default
+   `~/.config/datarobot/drconfig.yaml`) exists. If it doesn't, tell the user
+   to run `dr auth login` (browser-based flow) and stop until they confirm
+   they're signed in. Do **not** cat the file to inspect its contents.
+3. If no `.env`: tell the user to run `dr dotenv setup --if-needed` or
+   `dr start` first (base vars only).
 
 ---
 
@@ -112,12 +119,14 @@ reply is anything else, re-ask the question — do not guess.
    python <skill_scripts_dir>/list_gateway_models.py
    ```
 
-   The token stays inside the script — do **not** read `.env` yourself or
-   pass `DATAROBOT_API_TOKEN` on the command line.
+   The script reads `endpoint` and `token` from
+   `$XDG_CONFIG_HOME/datarobot/drconfig.yaml` (populated by `dr auth login`).
+   Do **not** read that file yourself, do **not** read `.env` for the token,
+   and do **not** pass `DATAROBOT_API_TOKEN` on the command line.
 
-   If the script exits non-zero with a "TOKEN not set" or "ENDPOINT not set"
-   message, tell the user to run `dr dotenv update` and stop — do not attempt
-   any manual API call and do not fabricate a menu.
+   If the script exits non-zero with a "credentials not found" message, tell
+   the user to run `dr auth login` and stop — do not attempt any manual API
+   call and do not fabricate a menu.
 
 2. Parse the JSON returned in step 1. The model ids in the menu you show the
    user **must** come from that JSON, verbatim, in the order returned. Do not
@@ -153,13 +162,11 @@ reply is anything else, re-ask the question — do not guess.
    if the user omits it.
 4. For `blueprint-gateway` only, optional: `llm_llm_id` (default
    `azure-openai-gpt-5-mini`) — skip unless the user asks about it.
-5. **Skip Step 3** (no credentials file).
 
 ### `deployed`
 
 1. Ask: `llm_deployment_id` (24-char hex).
 2. Optional: `llm_model` (default `datarobot/datarobot-deployed-llm`).
-3. **Skip Step 3**.
 
 ### `external`
 
@@ -177,38 +184,20 @@ reply is anything else, re-ask the question — do not guess.
 
    Map the letter back to the `external_provider` value.
 2. Ask: `llm_model` (default `azure-openai-gpt-5-mini` for Azure).
-3. Continue to **Step 3**.
+3. Provider credentials live at
+   `$XDG_CONFIG_HOME/datarobot/llm-<provider>.env` (default
+   `~/.config/datarobot/llm-<provider>.env`) — **per-user, alongside the
+   `drconfig.yaml` that `dr auth login` populates**, not inside the project.
+
+   On first run in a new mode the sync script (Step 4) creates the file as a
+   template with the required keys blank and exits with instructions. **Do
+   not create the file yourself, do not `cat` it, do not ask the user to
+   paste values in chat**, and do not write any credentials into
+   `.datarobot/llm-config.json`.
 
 ---
 
-## Step 3 — Credentials file plan (external only)
-
-Show the user this plan before creating files:
-
-```text
-.secrets/llm-external.env   ← you fill provider secrets here (gitignored)
-.datarobot/llm-config.json  ← non-secret LLM settings (gitignored)
-.env                        ← updated by sync script only
-```
-
-Run template writer (from project root):
-
-```shell
-python <skill_scripts_dir>/sync_llm_env.py write-template \
-  --provider <external_provider> \
-  --output .secrets/llm-external.env
-```
-
-Tell the user:
-
-> Open `.secrets/llm-external.env`, fill in the values, save, then reply **credentials ready**.
-> Do not paste secrets in chat.
-
-Wait for **credentials ready** before Step 5.
-
----
-
-## Step 4 — Write `.datarobot/llm-config.json`
+## Step 3 — Write `.datarobot/llm-config.json`
 
 Write JSON (no secrets). Examples:
 
@@ -247,21 +236,19 @@ Write JSON (no secrets). Examples:
 {
   "integration": "external",
   "external_provider": "azure",
-  "llm_model": "azure-openai-gpt-5-mini",
-  "credentials_file": ".secrets/llm-external.env"
+  "llm_model": "azure-openai-gpt-5-mini"
 }
 ```
 
 ---
 
-## Step 5 — Sync into `.env`
+## Step 4 — Sync into `.env`
 
 Pass `--delete-config` so the intermediate `llm-config.json` is removed once the
-merge succeeds — the durable state lives in `.env` (managed block) and, for
-external mode, in `.secrets/llm-external.env`:
+merge succeeds — durable state lives in `.env`:
 
 ```shell
-python <skill_scripts_dir>/sync_llm_env.py sync \
+python <skill_scripts_dir>/sync_llm_env.py \
   --config .datarobot/llm-config.json \
   --env-file .env \
   --delete-config
@@ -270,14 +257,22 @@ python <skill_scripts_dir>/sync_llm_env.py sync \
 The script only deletes the config **after** a successful write; if the sync
 fails, the config file is preserved so the user can fix and retry.
 
-If external mode and credentials are missing or empty, the script exits with a
-checklist — send user back to Step 3. In that case the config file stays in
-place, so you can re-run the same command after `.secrets/llm-external.env` is
-filled in.
+For **external mode**, the sync reads provider credentials from
+`$XDG_CONFIG_HOME/datarobot/llm-<provider>.env` and merges them into `.env`.
+
+- **If the file doesn't exist**, the script writes a blank template at that
+  path and exits with the path and the list of required keys. Relay the
+  exact path and key list to the user, tell them to fill in the file in
+  their own editor, then re-run the same sync command. Do not offer to
+  create the file for them and do not accept values in chat.
+- **If the file exists but is incomplete**, the script prints the missing
+  keys and exits. Same instruction: user edits the file, then re-runs.
+- **If the file is complete**, the sync merges the credentials into `.env`
+  in one shot.
 
 ---
 
-## Step 6 — Validate and hand off
+## Step 5 — Validate and hand off
 
 **`dr dotenv validate` echoes the full `.env` (including `DATAROBOT_API_TOKEN`)
 to stdout.** If you run it without redirection, the token lands in the chat
