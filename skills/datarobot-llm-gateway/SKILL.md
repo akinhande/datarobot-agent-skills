@@ -51,8 +51,12 @@ ls <skill_scripts_dir>/sync_llm_env.py
    `~/.config/datarobot/drconfig.yaml`) exists. If it doesn't, tell the user
    to run `dr auth login` (browser-based flow) and stop until they confirm
    they're signed in. Do **not** cat the file to inspect its contents.
-3. If no `.env`: tell the user to run `dr dotenv setup --if-needed` or
-   `dr start` first (base vars only).
+3. Check if `.env` exist in the project:
+   - If `.env` is missing `cp .env.template .env`. That gives the base variables (`DATAROBOT_*`,
+     `PULUMI_*`, etc.) many are blank, it will be filled later. But the sync in Step 3
+     only needs the file to exist.
+   - If both `.env` and no `.env.template` are missing, tell the user they're not in
+     a DataRobot agent project root and stop.
 
 ---
 
