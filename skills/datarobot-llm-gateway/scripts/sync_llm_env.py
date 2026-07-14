@@ -3,28 +3,36 @@
 # SPDX-License-Identifier: Apache-2.0
 """Merge LLM configuration into project .env.
 
-For external mode, provider credentials are read from
+The assistant passes the mode-specific values as CLI args. For external mode,
+provider credentials are read from
 `$XDG_CONFIG_HOME/datarobot/llm-<provider>.env` (default
-`~/.config/datarobot/llm-<provider>.env`) — per-user, reusable across
-projects, alongside the credentials `dr auth login` writes to `drconfig.yaml`.
+`~/.config/datarobot/llm-<provider>.env`) — per-user, reusable across projects,
+alongside the DataRobot auth `dr auth login` writes to `drconfig.yaml`.
 
-If the file is missing or incomplete, the script writes a template with the
-required keys blank and exits so the user can fill it in. The assistant never
-sees the values.
+If the credentials file is missing or incomplete, the script writes a blank
+template with the required keys and exits so the user can fill it in.
 
 Usage:
-  python sync_llm_env.py --config .datarobot/llm-config.json --env-file .env
+  python sync_llm_env.py --integration gateway \
+    --llm-model datarobot/azure/o4-mini
+
+  python sync_llm_env.py --integration blueprint-gateway \
+    --llm-model datarobot/azure/o4-mini --llm-llm-id azure-openai-gpt-5-mini
+
+  python sync_llm_env.py --integration deployed \
+    --llm-deployment-id 6510c7b7c4f3f9407e24a849
+
+  python sync_llm_env.py --integration external \
+    --external-provider azure --llm-model azure-openai-gpt-5-mini
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import re
 import sys
 from pathlib import Path
-from typing import Any
 
 INTEGRATION_TO_INFRA = {
     "gateway": "gateway_direct.py",
@@ -50,8 +58,14 @@ PROVIDER_KEYS = {
 # Keys owned by this script — stripped from .env on every re-sync so mode
 # switches don't leave stale entries (e.g. bedrock → gateway clears AWS_*).
 LLM_MANAGED_KEYS = frozenset(
-    {"INFRA_ENABLE_LLM", "LLM_DEFAULT_MODEL", "LLM_DEPLOYMENT_ID",
-     "LLM_DEFAULT_LLM_ID", "LLM_DEFAULT_LLM_NAME", "USE_DATAROBOT_LLM_GATEWAY"}
+    {
+        "INFRA_ENABLE_LLM",
+        "LLM_DEFAULT_MODEL",
+        "LLM_DEPLOYMENT_ID",
+        "LLM_DEFAULT_LLM_ID",
+        "LLM_DEFAULT_LLM_NAME",
+        "USE_DATAROBOT_LLM_GATEWAY",
+    }
     | {k for keys in PROVIDER_KEYS.values() for k in keys}
 )
 
@@ -87,8 +101,11 @@ def _read_kv(path: Path) -> dict[str, str]:
 
 def _write_provider_template(provider: str, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    lines = [f"# DataRobot LLM — {provider} provider credentials (per-user).",
-             "# Fill each value below. Do not commit this file.", ""]
+    lines = [
+        f"# DataRobot LLM — {provider} provider credentials (per-user).",
+        "# Fill each value below. Do not commit this file.",
+        "",
+    ]
     lines += [f"{key}=" for key in PROVIDER_KEYS[provider]]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -108,44 +125,37 @@ def parse_dotenv(path: Path) -> list[str]:
     return kept
 
 
-def build_llm_env(config: dict[str, Any]) -> dict[str, str]:
-    integration = config.get("integration", "").strip()
-    if integration not in INTEGRATION_TO_INFRA:
-        raise ValueError(
-            f"integration must be one of: {', '.join(INTEGRATION_TO_INFRA)}"
-        )
+def build_llm_env(args: argparse.Namespace) -> dict[str, str]:
+    integration = args.integration
     env = {"INFRA_ENABLE_LLM": INTEGRATION_TO_INFRA[integration]}
 
     if integration in ("gateway", "blueprint-gateway"):
-        model = (config.get("llm_model") or "").strip()
-        if not model:
-            raise ValueError("llm_model is required for gateway modes")
+        if not args.llm_model:
+            raise ValueError("--llm-model is required for gateway modes")
+        model = args.llm_model.strip()
         if not model.startswith("datarobot/"):
             model = f"datarobot/{model}"
         env["LLM_DEFAULT_MODEL"] = model
-        if integration == "blueprint-gateway" and config.get("llm_llm_id"):
-            env["LLM_DEFAULT_LLM_ID"] = config["llm_llm_id"]
+        if integration == "blueprint-gateway" and args.llm_llm_id:
+            env["LLM_DEFAULT_LLM_ID"] = args.llm_llm_id.strip()
 
     elif integration == "deployed":
-        dep_id = (config.get("llm_deployment_id") or "").strip()
+        dep_id = (args.llm_deployment_id or "").strip()
         if not re.fullmatch(r"[0-9a-f]{24}", dep_id):
-            raise ValueError("llm_deployment_id must be 24 lowercase hex chars")
+            raise ValueError("--llm-deployment-id must be 24 lowercase hex chars")
         env["LLM_DEPLOYMENT_ID"] = dep_id
-        env["LLM_DEFAULT_MODEL"] = config.get(
-            "llm_model", "datarobot/datarobot-deployed-llm"
-        )
+        env["LLM_DEFAULT_MODEL"] = args.llm_model or "datarobot/datarobot-deployed-llm"
         env["USE_DATAROBOT_LLM_GATEWAY"] = "0"
 
     else:  # external
-        provider = (config.get("external_provider") or "").strip()
+        provider = args.external_provider
         if provider not in PROVIDER_KEYS:
             raise ValueError(
-                f"external_provider must be one of: {', '.join(sorted(PROVIDER_KEYS))}"
+                f"--external-provider must be one of: {', '.join(sorted(PROVIDER_KEYS))}"
             )
-        model = (config.get("llm_model") or "").strip()
-        if not model:
+        if not args.llm_model:
             raise ValueError(
-                f"llm_model is required for external mode (provider: {provider})"
+                f"--llm-model is required for external mode (provider: {provider})"
             )
         creds_path = _config_dir() / f"llm-{provider}.env"
         if not creds_path.exists():
@@ -162,7 +172,7 @@ def build_llm_env(config: dict[str, Any]) -> dict[str, str]:
                 f"{creds_path} is missing values for: {', '.join(missing)}. "
                 "Edit the file, then re-run."
             )
-        env["LLM_DEFAULT_MODEL"] = model
+        env["LLM_DEFAULT_MODEL"] = args.llm_model.strip()
         for key in PROVIDER_KEYS[provider]:
             env[key] = creds[key]
 
@@ -171,21 +181,20 @@ def build_llm_env(config: dict[str, Any]) -> dict[str, str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Sync LLM config into .env")
-    parser.add_argument("--config", default=".datarobot/llm-config.json")
+    parser.add_argument(
+        "--integration", required=True, choices=list(INTEGRATION_TO_INFRA)
+    )
+    parser.add_argument("--llm-model")
+    parser.add_argument("--llm-llm-id")
+    parser.add_argument("--llm-deployment-id")
+    parser.add_argument("--external-provider", choices=list(PROVIDER_KEYS))
     parser.add_argument("--env-file", default=".env")
-    parser.add_argument("--delete-config", action="store_true")
     args = parser.parse_args()
 
-    config_path = Path(args.config)
     env_path = Path(args.env_file)
 
-    if not config_path.exists():
-        print(f"Config not found: {config_path}", file=sys.stderr)
-        return 1
-
     try:
-        config = json.loads(config_path.read_text(encoding="utf-8"))
-        llm_vars = build_llm_env(config)
+        llm_vars = build_llm_env(args)
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
@@ -199,10 +208,6 @@ def main() -> int:
     print(f"Synced {len(llm_vars)} LLM variable(s) into {env_path}")
     for key in sorted(llm_vars):
         print(f"  ✓ {key}")
-
-    if args.delete_config:
-        config_path.unlink()
-        print(f"Deleted {config_path}")
 
     print(
         "\nNext (run in your terminal — these echo secrets):\n"
