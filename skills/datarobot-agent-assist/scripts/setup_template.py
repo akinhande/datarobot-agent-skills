@@ -249,7 +249,7 @@ def setup_and_run(llm_default_model: str, target_dir: Path) -> int:
         return 1
 
     # Step 2: Run dr dotenv setup
-    success, output = run_command("dr dotenv setup --yes", target_dir)
+    success, output = run_command("dr dotenv setup --yes --output .", target_dir)
     if not success:
         # TODO: DR CLI non-interactive mode MUST be supported for this to work
         print("\n⚠ Command 'dr dotenv setup --yes' failed")
@@ -289,13 +289,16 @@ def main() -> int:
 
     parser.add_argument(
         "--target-dir",
-        default=".",
-        help="Target directory for operations (default: current directory)",
+        required=True,
+        help="Target directory for operations (required — use the session <target_dir>)",
     )
 
     args = parser.parse_args()
 
     target_dir = Path(args.target_dir).resolve()
+    if not target_dir.is_dir():
+        print(f"Error: target directory does not exist: {target_dir}", file=sys.stderr)
+        return 1
 
     return setup_and_run(args.llm_model, target_dir)
 

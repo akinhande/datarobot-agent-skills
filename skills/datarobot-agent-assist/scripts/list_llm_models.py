@@ -156,12 +156,15 @@ def main() -> int:
     )
     parser.add_argument(
         "--target-dir",
-        default=".",
-        help="Project directory for .env lookup (default: current directory)",
+        required=True,
+        help="Project directory for .env lookup (required — use the session <target_dir>)",
     )
     args = parser.parse_args()
 
     target_dir = Path(args.target_dir).resolve()
+    if not target_dir.is_dir():
+        print(f"Error: target directory does not exist: {target_dir}", file=sys.stderr)
+        return 1
     endpoint, api_token = get_datarobot_credentials(target_dir)
 
     if not endpoint and not api_token:

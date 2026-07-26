@@ -5,7 +5,7 @@
 """
 DataRobot Dress Rehearsal engine (datarobot-agent-assist skill)
 
-Init:  python3 rehearsal.py --init [--spec agent_spec.md] [--target-dir <directory>]
+Init:  python3 rehearsal.py --init [--spec agent_spec.md] --target-dir <directory>
          stdout: session=<session_dir>  output=<output_file>
 Turn:  python3 rehearsal.py --session <session_dir> [--target-dir <directory>] "user message"
          stdout: output=<output_file>
@@ -749,7 +749,7 @@ def main() -> int:
     parser.add_argument(
         "--target-dir",
         default=None,
-        help="Project directory for .env lookup (turns: defaults to session from --init)",
+        help="Project directory for .env lookup (required for --init; turns default to session from --init)",
     )
     parser.add_argument("--session", metavar="DIR")
     parser.add_argument("message", nargs="?")
@@ -758,9 +758,21 @@ def main() -> int:
     target_dir = Path(args.target_dir).resolve() if args.target_dir else None
 
     if args.init:
+        if not target_dir:
+            print(
+                "Error: --target-dir is required for --init",
+                file=sys.stderr,
+            )
+            return 1
+        if not target_dir.is_dir():
+            print(
+                f"Error: target directory does not exist: {target_dir}",
+                file=sys.stderr,
+            )
+            return 1
         session_dir = tempfile.mkdtemp(prefix="dr_rehearsal_")
         with capture_output(session_dir) as output_path:
-            cmd_init(args.spec, session_dir, target_dir or Path("."))
+            cmd_init(args.spec, session_dir, target_dir)
         print(f"session={session_dir}")
         print(f"output={output_path}")
 

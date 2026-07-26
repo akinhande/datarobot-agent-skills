@@ -14,6 +14,19 @@ You play the **end user**. The rehearsal script drives the LLM, simulates tool o
 
 **Engine location:** `<skill_scripts_dir>/rehearsal.py`
 
+### Initial prompt (design phase)
+
+Before transitioning to coding, explain dress rehearsal briefly, then ask (exact wording):
+
+> **Dress rehearsal** is a try-before-you-build session: you chat with your agent design as if it were already running. The agent uses your spec's model and system prompt; tool calls return **simulated** (fake but realistic) data — no real APIs, no deployment, no code written yet. It's a safe way to test prompts, tools, and conversation flow before implementation.
+>
+> Would you like to run a dress rehearsal simulation first? (recommended)
+
+Wait for their reply:
+
+- **If yes** — follow this document end to end. Do not substitute improvised role-play or manual mock tool traces.
+- **If no** (or any decline such as "no", "skip", "not now") — go to **[Post-design next steps](../SKILL.md#post-design-next-steps)**. Do not jump to coding, framework selection, or template setup.
+
 ### Visual presentation (required)
 
 Rehearsal must look visually distinct from normal design/coding chat. Display rehearsal output **verbatim from the first line to the last** — do not truncate, summarize, or replace the closing lines. Each turn is wrapped with a symmetric `─ ★ Agent Dress Rehearsal ★ ─` line at the **top and bottom**, followed by continuation hints and `Type DONE to end the rehearsal session.` **Do not** rephrase those hints in your own words.

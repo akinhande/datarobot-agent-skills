@@ -1,5 +1,7 @@
 # agent_spec.md Examples
 
+Field definitions and structure: [agent-spec-schema.md](agent-spec-schema.md).
+
 ## Example 1: Weather Agent (Simple)
 
 ```yaml
