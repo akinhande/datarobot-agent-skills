@@ -11,10 +11,21 @@ Each entry should be prefixed with the affected skill folder name (for example,
 
 ## [Unreleased]
 
+## [1.3.9] - 2026-07-22
+
+- `datarobot-workload-api`: Add `references/web-uis-behind-the-edge.md` for serving a browser-facing web app (UI + backend) through the workload endpoint — the edge gateway strips the path prefix (inbound shim + base-path derived from the injected `WORKLOAD_ID`; proton-id path needs an explicit override), is itself the auth gate and hijacks the `Authorization` header (so disable the app's own auth and trust the edge), shared-origin `_xsrf`/CSRF collisions, and WebSocket pass-through. Correct artifact-replacement guidance: same-artifact replacement is allowed for drafts, `PATCH /settings/` rolling-redeploys onto a rebuilt image, and `imageUri` is build-managed (never hand-PATCH it or PATCH the spec mid-build). Trim `SKILL.md` ~18% to stay within the context-window budget.
+
+## [1.3.8] - 2026-07-17
+
+- `datarobot-agent-assist`: Warn when the ports needed for local agent testing (5173, 8080, 8842) are not exposed inside a DataRobot Codespace, and stop with guidance when Agent Assist runs from an unsupported working directory. New `check_codespace.py` helper wired into the Pre-requisite Check; no-op outside a Codespace.
+
+## [1.3.7] - 2026-07-14
+
+- `datarobot-external-agent-monitoring`: Fix PydanticAI instrumentation — modern PydanticAI makes OpenTelemetry instrumentation opt-in, so configuring a provider alone emitted no spans; document the required `Agent.instrument_all()` call.
+
 ## [1.3.6] - 2028-07-14
 
 - `datarobot-agent-assist`: Implement pre-coding-checklist, pre-deployment-checklist & workspace-resolution flows.
-
 
 ## [1.3.5] - 2028-07-08
 
