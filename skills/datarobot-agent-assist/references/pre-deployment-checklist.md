@@ -25,7 +25,7 @@ Run this checklist when the user enters **[3. Deploying an AI Agent](../SKILL.md
 
    | Check | On failure |
    |-------|------------|
-   | `AGENTS.md` exists | Agent is not implemented. Offer **[2. Coding an AI Agent](../SKILL.md#2-coding-an-ai-agent)** on this `<target_dir>` and run the [Pre-coding Checklist](pre-coding-checklist.md) (deploy → coding handoff — skip Bootstrap, resume at Template setup classification). |
+   | `AGENTS.md` exists | Agent is not implemented. Offer **[2. Coding an AI Agent](../SKILL.md#2-coding-an-ai-agent)** on this `<target_dir>` and run the [Pre-coding Checklist](pre-coding-checklist.md) (deploy → coding handoff — skip Bootstrap step 1; run step 2 spec validation, then Template setup). |
    | Git repository with `origin` matching `REPO_URL` | Template is not initialized. Offer coding on this `<target_dir>` (deploy → coding handoff — same as above). |
    | User declines coding | Show the [welcome menu](../SKILL.md#on-activation). Stop. |
 

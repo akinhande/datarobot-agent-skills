@@ -12,7 +12,7 @@ Run this checklist when the user enters **[2. Coding an AI Agent](../SKILL.md#2-
 |-------|----------------|----------|
 | **Same-session design → code** (`<design_to_code>` is true) | Steps 1–2 | Template setup step 3 |
 | **Code after workspace resolution** (`<workspace_resolved>` is true and `<target_dir>` equals `<workspace_resolved_target_dir>`) | Step 1 only | Step 2 (cold Code — field validation and missing-spec recovery) |
-| **Deploy → coding handoff** (`<target_dir>` set, template not verified) | Steps 1–2 | Template setup step 3 (classify at step 4, then resume — see below) |
+| **Deploy → coding handoff** (`<target_dir>` set, template not verified) | Step 1 only | Step 2 (spec validation and missing-spec recovery), then Template setup step 3 |
 
 ---
 
@@ -25,6 +25,8 @@ Run this checklist when the user enters **[2. Coding an AI Agent](../SKILL.md#2-
 2. **Confirm spec** — read `<target_dir>/agent_spec.md`.
 
    **Skip entirely** when `<design_to_code>` is true (design already produced the spec).
+
+   **Required** on deploy → coding handoff — pre-deployment does not check for `agent_spec.md`, but coding needs a [spec complete](resume-design.md#spec-complete) file before template setup (including `model` for step 9).
 
    **If the file does not exist**, do not assume Design is required — `<target_dir>` may be wrong.
 
@@ -84,7 +86,7 @@ When step 2 finds a problem in `agent_spec.md`:
 
 ### Template setup
 
-**Prerequisite:** Bootstrap step 2 spec validation passed (all [spec complete](resume-design.md#spec-complete) fields present). If step 2 reported missing fields, do **not** enter this section — handle [Spec issues](#spec-issues) first.
+**Prerequisite:** All [spec complete](resume-design.md#spec-complete) fields are present in `<target_dir>/agent_spec.md` — validated in Bootstrap step 2 (cold Code and deploy → coding handoff), or satisfied by same-session design (`<design_to_code>` is true; step 2 skipped). If step 2 reported missing fields, do **not** enter this section — handle [Spec issues](#spec-issues) first.
 
 3. **Read `REPO_URL`** from `REPO_URL` in `<skill_scripts_dir>/clone_template.py`. This is the only canonical template repository URL — use it for remote comparison and cloning. See [helper-scripts.md](helper-scripts.md) for script details.
 
@@ -103,7 +105,7 @@ When step 2 finds a problem in `agent_spec.md`:
    | **Spec-only** | Not existing template, and directory contains only `agent_spec.md` and/or `.env` (no other files or directories) |
    | **Everything else** | Any other state — including wrong git remote, git repo without `AGENTS.md`, or extra files/directories (e.g. `src/`, `.datarobot/`, `.gitignore`) |
 
-   **Deploy → coding handoff:** After classifying, jump to the matching step below — do not re-run Bootstrap.
+   **Deploy → coding handoff:** After classifying, jump to the matching step below — do not re-run Bootstrap step 1.
 
 5. **Existing template** — notify the user the template is already present in `<target_dir>`. Then:
 
@@ -161,7 +163,7 @@ When step 2 finds a problem in `agent_spec.md`:
 
    Invalidate `<dependency_check_passed>` after this step.
 
-9. **Setup** (skip if step 5b applied) — run [setup_template.py](helper-scripts.md#setup_templatepy). Use the `model` field from `agent_spec.md` as `--llm-model` (required by Bootstrap step 2 for cold Code entry; design → code already has `model` in the spec).
+9. **Setup** (skip if step 5b applied) — run [setup_template.py](helper-scripts.md#setup_templatepy). Use the `model` field from `agent_spec.md` as `--llm-model` (must be present — validated in Bootstrap step 2 for cold Code and deploy handoff, or produced by same-session design).
 
    Invalidate `<dependency_check_passed>` after this step.
 
