@@ -6,9 +6,10 @@
 Create a new DataRobot project from a dataset.
 
 Usage:
-    python create_project.py <dataset_id> <project_name> [target_column]
+    python create_project.py <dataset_id> <project_name> [target_column] [use_case_id]
 
-Creates a project and optionally sets the target.
+Creates a project, optionally sets the target, and optionally links the
+project to an existing Use Case so it isn't orphaned in the DataRobot UI.
 """
 
 import sys
@@ -18,7 +19,10 @@ import datarobot as dr
 
 
 def create_project(
-    dataset_id: str, project_name: str, target_column: str = None
+    dataset_id: str,
+    project_name: str,
+    target_column: str | None = None,
+    use_case_id: str | None = None,
 ) -> dict:
     """
     Create a new DataRobot project from a dataset.
@@ -27,6 +31,7 @@ def create_project(
         dataset_id: The dataset ID
         project_name: Name for the project
         target_column: Optional target column name
+        use_case_id: Optional existing Use Case ID to link the project to
 
     Returns:
         Project information
@@ -37,9 +42,11 @@ def create_project(
         endpoint=os.getenv("DATAROBOT_ENDPOINT", "https://app.datarobot.com"),
     )
 
+    use_case = dr.UseCase.get(use_case_id) if use_case_id else None
+
     # Create project
     project = dr.Project.create_from_dataset(
-        dataset_id=dataset_id, project_name=project_name
+        dataset_id=dataset_id, project_name=project_name, use_case=use_case
     )
 
     result = {
@@ -47,6 +54,7 @@ def create_project(
         "project_name": project.project_name,
         "status": project.status,
         "dataset_id": dataset_id,
+        "use_case_id": use_case_id,
     }
 
     # Set target if provided
@@ -64,7 +72,8 @@ def create_project(
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         print(
-            "Usage: python create_project.py <dataset_id> <project_name> [target_column]",
+            "Usage: python create_project.py <dataset_id> <project_name> "
+            "[target_column] [use_case_id]",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -72,9 +81,10 @@ if __name__ == "__main__":
     dataset_id = sys.argv[1]
     project_name = sys.argv[2]
     target_column = sys.argv[3] if len(sys.argv) > 3 else None
+    use_case_id = sys.argv[4] if len(sys.argv) > 4 else None
 
     try:
-        result = create_project(dataset_id, project_name, target_column)
+        result = create_project(dataset_id, project_name, target_column, use_case_id)
         print(json.dumps(result, indent=2))
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

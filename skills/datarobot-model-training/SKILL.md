@@ -11,9 +11,9 @@ This skill provides guidance for the complete model training workflow in DataRob
 
 **Most common use case**: Create a project and train models
 
-1. **Create or reuse a Use Case**: `dr.UseCase.create(name)` to group this project's data, project, and deployment under one entity in the DataRobot UI
-2. **Upload dataset**: `upload_dataset(file_path, dataset_name, use_case)` to upload training data, associated with the Use Case
-3. **Create project**: `create_project(dataset_id, project_name, use_case)` to create new project, associated with the same Use Case
+1. **Create or reuse a Use Case**: ask the user if they have an existing Use Case ID to reuse (`dr.UseCase.get(use_case_id)`); otherwise create a new one (`dr.UseCase.create(name)`). Every project needs one linked in Workbench
+2. **Upload dataset**: `upload_dataset(file_path, dataset_name, use_case_id)` to upload training data, associated with the Use Case
+3. **Create project**: `create_project(dataset_id, project_name, target_column, use_case_id)` to create new project, associated with the same Use Case
 4. **Start training**: `start_automl(project_id, mode)` to begin AutoML training
 
 **Example**: "Create a new project under a 'Sales Forecasting' Use Case with sales_data.csv, set 'revenue' as target, and start Quick AutoML training"
@@ -125,14 +125,22 @@ See the [Common Patterns](#common-patterns) section below for complete examples.
 
 This skill includes executable helper scripts that Claude can run directly:
 
-- `scripts/create_project.py` - Create a new project from a dataset
+- `scripts/create_project.py` - Create a new project from a dataset, optionally linked to a Use Case
 - `scripts/start_training.py` - Start AutoML training
 - `scripts/list_models.py` - List trained models with metrics
 
+The `datarobot-data-preparation` skill's `scripts/upload_dataset.py` accepts the same optional `use_case_id` argument for linking an uploaded dataset to a Use Case.
+
 **Usage example**:
 ```bash
-# Create project and set target
-python scripts/create_project.py dataset_123 "Sales Prediction" revenue
+# Create (or reuse) a Use Case first
+python -c "import datarobot as dr; print(dr.UseCase.create(name='Sales Prediction').id)"
+
+# Upload dataset, linked to the Use Case
+python ../datarobot-data-preparation/scripts/upload_dataset.py sales_data.csv "Sales Data" use_case_456
+
+# Create project and set target, linked to the same Use Case
+python scripts/create_project.py dataset_123 "Sales Prediction" revenue use_case_456
 
 # Start training
 python scripts/start_training.py project_456 Quick
@@ -146,7 +154,7 @@ Claude can run these scripts directly or use them as reference when writing code
 ## Best practices
 
 1. **Data preparation**: Ensure data is clean and properly formatted before upload
-2. **Use Cases**: Create or reuse a Use Case up front and pass it to both `Dataset.create_from_file` (`use_cases=[...]`) and `Project.create_from_dataset` (`use_case=...`) so the project shows up grouped in the DataRobot UI instead of orphaned
+2. **Use Cases**: Every project needs a linked Use Case in Workbench. Resolve one up front — reuse an existing `use_case_id` via `dr.UseCase.get(use_case_id)`, or create a new one via `dr.UseCase.create(name)` — and pass it to both `Dataset.create_from_file` (`use_cases=[...]`) and `Project.create_from_dataset` (`use_case=...`) so the project lands under the intended Use Case rather than a default one
 3. **Target selection**: Choose appropriate target variable (avoid leakage)
 4. **Partitioning**: Use proper partitioning for time-aware or grouped data
 5. **Feature engineering**: Let AutoML handle feature engineering, but review results
@@ -166,8 +174,13 @@ client = dr.Client(
     endpoint=os.getenv("DATAROBOT_ENDPOINT")
 )
 
-# Create (or reuse) a Use Case to group this work
-use_case = dr.UseCase.create(name="Sales Prediction")
+# Reuse an existing Use Case if the user gave us one, otherwise create a new one
+existing_use_case_id = os.getenv("DATAROBOT_USE_CASE_ID")  # or ask the user for it
+use_case = (
+    dr.UseCase.get(existing_use_case_id)
+    if existing_use_case_id
+    else dr.UseCase.create(name="Sales Prediction")
+)
 
 # Upload dataset
 dataset = dr.Dataset.create_from_file(
@@ -207,9 +220,15 @@ print(f"Best model: {best_model.id}, AUC: {best_model.metrics.get('AUC')}")
 ### Pattern 2: Time series forecasting
 ```python
 import datarobot as dr
+import os
 
-# Create (or reuse) a Use Case to group this work
-use_case = dr.UseCase.create(name="Sales Forecast")
+# Reuse an existing Use Case if the user gave us one, otherwise create a new one
+existing_use_case_id = os.getenv("DATAROBOT_USE_CASE_ID")  # or ask the user for it
+use_case = (
+    dr.UseCase.get(existing_use_case_id)
+    if existing_use_case_id
+    else dr.UseCase.create(name="Sales Forecast")
+)
 
 # Upload dataset
 dataset = dr.Dataset.create_from_file(
