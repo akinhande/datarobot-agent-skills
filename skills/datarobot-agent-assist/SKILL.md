@@ -301,4 +301,4 @@ Field definitions: [references/agent-spec-schema.md](references/agent-spec-schem
 - During **coding**: keep responses to 1–3 sentences; no introductions or conclusions
 - During **design**: be conversational and thorough
 
-For helper script commands, see [references/helper-scripts.md](references/helper-scripts.md). For plugin tool mapping, see [references/plugin-migration.md](references/plugin-migration.md).
+For helper script commands, see [references/helper-scripts.md](references/helper-scripts.md). For plugin tool mapping, see [references/tool-mapping.md](references/tool-mapping.md).
