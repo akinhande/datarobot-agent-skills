@@ -39,7 +39,7 @@ DataRobot skills are Agent Context Protocol (ACP) definitions for enterprise AI 
 ## Quick start
 
 > [!NOTE]
-> Supported agents for DataRobot skills include: [Claude Code](https://www.anthropic.com/claude-code/), [Cursor](https://cursor.com), [Codex](https://developers.openai.com/codex/), [Amp](https://ampcode.com/), [VS Code Copilot (GitHub Copilot)](https://github.com/features/copilot), [Gemini CLI](https://geminicli.com/), [Goose](https://block.github.io/goose/), [Letta](https://www.letta.com/), [Kilo Code](https://kilocode.ai/), and [OpenCode](https://opencode.ai/).
+> Supported agents for DataRobot skills include: [Claude Code](https://www.anthropic.com/claude-code/), [Cursor](https://cursor.com), [Codex](https://developers.openai.com/codex/), [Amp](https://ampcode.com/), [VS Code Copilot (GitHub Copilot)](https://github.com/features/copilot), [Gemini CLI](https://geminicli.com/), [Goose](https://block.github.io/goose/), [Letta](https://www.letta.com/), [Kilo Code](https://kilocode.ai/), [OpenCode](https://opencode.ai/), and [Windsurf/Devin](https://devin.ai/).
 
 Install all DataRobot skills, or only the ones you need, for **all** your AI agents with one command by using the [universal skills installer](https://github.com/skillcreatorai/Ai-Agent-Skills).
 
@@ -75,8 +75,9 @@ Skills are self-contained folders that package instructions, scripts, and resour
 
 ### Installation to your coding agent
 
-DataRobot skills are compatible with Claude Code, Codex, Gemini CLI, Cursor, and VS Code Copilot. Support for Windsurf and Continue is planned.
-Click on the section that corresponds to your coding agent to see the installation instructions.
+DataRobot skills are compatible with Claude Code, Codex, Gemini CLI, Cursor, VS Code Copilot, Windsurf/Devin, and more. For the universal `npx` installer, see [Quick start](#quick-start) above.
+
+Click on the section that corresponds to your coding agent below for agent-specific installation instructions.
 
 <details><summary><strong>Claude Code</strong></summary>
 
@@ -236,6 +237,24 @@ Add to your `~/.config/opencode/opencode.json`:
 ```
 
 OpenCode automatically installs the plugin on startup. The plugin also includes a DataRobot-branded theme with full dark and light variants. To activate it, add `"theme": "datarobot"` to your `opencode.json`.
+
+</details>
+
+<details><summary><strong>Windsurf/Devin</strong></summary>
+
+[Windsurf](https://windsurf.com/) and [Devin](https://devin.ai/) support the Agent Skills format. Install DataRobot skills using the universal installer from [Quick start](#quick-start) above.
+
+**Install all skills:**
+
+```bash
+npx ai-agent-skills install datarobot-oss/datarobot-agent-skills
+```
+
+**Install a specific skill:**
+
+```bash
+npx ai-agent-skills install datarobot-oss/datarobot-agent-skills/skills/datarobot-predictions
+```
 
 </details>
 
