@@ -11,11 +11,12 @@ This skill provides guidance for the complete model training workflow in DataRob
 
 **Most common use case**: Create a project and train models
 
-1. **Upload dataset**: `upload_dataset(file_path, dataset_name)` to upload training data
-2. **Create project**: `create_project(dataset_id, project_name)` to create new project
-3. **Start training**: `start_automl(project_id, mode)` to begin AutoML training
+1. **Create or reuse a Use Case**: `dr.UseCase.create(name)` to group this project's data, project, and deployment under one entity in the DataRobot UI
+2. **Upload dataset**: `upload_dataset(file_path, dataset_name, use_case)` to upload training data, associated with the Use Case
+3. **Create project**: `create_project(dataset_id, project_name, use_case)` to create new project, associated with the same Use Case
+4. **Start training**: `start_automl(project_id, mode)` to begin AutoML training
 
-**Example**: "Create a new project with sales_data.csv, set 'revenue' as target, and start Quick AutoML training"
+**Example**: "Create a new project under a 'Sales Forecasting' Use Case with sales_data.csv, set 'revenue' as target, and start Quick AutoML training"
 
 ## When to use this skill
 
@@ -97,8 +98,13 @@ pip install datarobot
 
 Use these DataRobot SDK methods for model training:
 
+**Use Cases** (organize related datasets/projects/deployments under one entity):
+- `dr.UseCase.create(name, description=None)` - Create a new Use Case
+- `dr.UseCase.get(use_case_id)` - Retrieve an existing Use Case (reuse instead of creating a new one)
+- `use_case.add(entity=project_or_dataset)` - Attach an already-created project or dataset to a Use Case
+
 **Projects**:
-- `dr.Project.create_from_dataset(dataset_id, project_name)` - Create project
+- `dr.Project.create_from_dataset(dataset_id, project_name, use_case=use_case)` - Create project, linked to a Use Case
 - `dr.Project.get(project_id)` - Get project details
 - `dr.Project.list()` - List all projects
 - `project.set_target(target_column)` - Set target variable
@@ -140,11 +146,12 @@ Claude can run these scripts directly or use them as reference when writing code
 ## Best practices
 
 1. **Data preparation**: Ensure data is clean and properly formatted before upload
-2. **Target selection**: Choose appropriate target variable (avoid leakage)
-3. **Partitioning**: Use proper partitioning for time-aware or grouped data
-4. **Feature engineering**: Let AutoML handle feature engineering, but review results
-5. **Model selection**: Compare multiple models, not just the top performer
-6. **Validation**: Review validation strategy and ensure it matches your use case
+2. **Use Cases**: Create or reuse a Use Case up front and pass it to both `Dataset.create_from_file` (`use_cases=[...]`) and `Project.create_from_dataset` (`use_case=...`) so the project shows up grouped in the DataRobot UI instead of orphaned
+3. **Target selection**: Choose appropriate target variable (avoid leakage)
+4. **Partitioning**: Use proper partitioning for time-aware or grouped data
+5. **Feature engineering**: Let AutoML handle feature engineering, but review results
+6. **Model selection**: Compare multiple models, not just the top performer
+7. **Validation**: Review validation strategy and ensure it matches your use case
 
 ## Common patterns
 
@@ -159,16 +166,21 @@ client = dr.Client(
     endpoint=os.getenv("DATAROBOT_ENDPOINT")
 )
 
+# Create (or reuse) a Use Case to group this work
+use_case = dr.UseCase.create(name="Sales Prediction")
+
 # Upload dataset
 dataset = dr.Dataset.create_from_file(
     file_path="training_data.csv",
-    name="Sales Data"
+    name="Sales Data",
+    use_cases=[use_case]
 )
 
 # Create project
 project = dr.Project.create_from_dataset(
     dataset_id=dataset.id,
-    project_name="Sales Prediction"
+    project_name="Sales Prediction",
+    use_case=use_case
 )
 
 # Set target
@@ -196,13 +208,19 @@ print(f"Best model: {best_model.id}, AUC: {best_model.metrics.get('AUC')}")
 ```python
 import datarobot as dr
 
+# Create (or reuse) a Use Case to group this work
+use_case = dr.UseCase.create(name="Sales Forecast")
+
 # Upload dataset
-dataset = dr.Dataset.create_from_file("sales_data.csv", "Sales Forecast Data")
+dataset = dr.Dataset.create_from_file(
+    "sales_data.csv", "Sales Forecast Data", use_cases=[use_case]
+)
 
 # Create project
 project = dr.Project.create_from_dataset(
     dataset_id=dataset.id,
-    project_name="Sales Forecast"
+    project_name="Sales Forecast",
+    use_case=use_case
 )
 
 # Configure time series settings
@@ -239,6 +257,7 @@ When selecting models, consider:
 Common errors and solutions:
 
 - **Dataset upload failures**: Check file format, size limits, encoding
+- **"Dataset does not contain enough rows"**: DataRobot requires a minimum of 20 rows to create a project from a dataset — sample/demo data must meet this
 - **Target errors**: Ensure target column exists and has appropriate values
 - **Training failures**: Check data quality, feature types, missing values
 - **Timeout errors**: Adjust time limits or use Quick mode for initial exploration
