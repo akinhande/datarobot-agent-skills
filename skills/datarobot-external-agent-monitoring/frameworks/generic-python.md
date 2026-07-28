@@ -65,23 +65,28 @@ import time
 meter = metrics.get_meter("my-agent")
 
 request_counter = meter.create_counter(
-    "agent.requests", unit="1",
+    "agent.requests",
+    unit="1",
     description="Total requests processed",
 )
 request_duration = meter.create_histogram(
-    "agent.request.duration_ms", unit="ms",
+    "agent.request.duration_ms",
+    unit="ms",
     description="End-to-end request duration",
 )
 llm_call_counter = meter.create_counter(
-    "agent.llm.calls", unit="1",
+    "agent.llm.calls",
+    unit="1",
     description="Number of LLM API calls",
 )
 llm_duration = meter.create_histogram(
-    "agent.llm.duration_ms", unit="ms",
+    "agent.llm.duration_ms",
+    unit="ms",
     description="Individual LLM call duration",
 )
 tool_call_counter = meter.create_counter(
-    "agent.tool.calls", unit="1",
+    "agent.tool.calls",
+    unit="1",
     description="Number of tool invocations",
 )
 
@@ -125,17 +130,21 @@ Even without a framework, you can auto-instrument the underlying LLM SDKs:
 ```python
 # OpenAI
 from opentelemetry.instrumentation.openai import OpenAIInstrumentor
+
 OpenAIInstrumentor().instrument()
 
 # Anthropic
 from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
+
 AnthropicInstrumentor().instrument()
 
 # HTTP clients (catches all outbound API calls)
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
+
 RequestsInstrumentor().instrument()
 
 from opentelemetry.instrumentation.httpx import HTTPXInstrumentor
+
 HTTPXInstrumentor().instrument()
 ```
 

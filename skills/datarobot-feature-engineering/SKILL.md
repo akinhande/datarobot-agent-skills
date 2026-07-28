@@ -124,8 +124,7 @@ import os
 
 # Initialize client
 client = dr.Client(
-    token=os.getenv("DATAROBOT_API_TOKEN"),
-    endpoint=os.getenv("DATAROBOT_ENDPOINT")
+    token=os.getenv("DATAROBOT_API_TOKEN"), endpoint=os.getenv("DATAROBOT_ENDPOINT")
 )
 
 # Get model and feature importance
@@ -134,9 +133,7 @@ feature_impact = model.get_feature_impact()
 
 # Sort by importance
 sorted_features = sorted(
-    feature_impact,
-    key=lambda x: x.get('impactNormalized', 0),
-    reverse=True
+    feature_impact, key=lambda x: x.get("impactNormalized", 0), reverse=True
 )
 
 # Get top 10 features
@@ -154,10 +151,7 @@ model = dr.Model.get("xyz123")
 feature_impact = model.get_feature_impact()
 
 # Filter by importance threshold (> 0.1)
-important_features = [
-    f for f in feature_impact
-    if f.get('impactNormalized', 0) > 0.1
-]
+important_features = [f for f in feature_impact if f.get("impactNormalized", 0) > 0.1]
 
 print(f"Found {len(important_features)} features with importance > 0.1")
 ```
@@ -217,7 +211,7 @@ import os
 
 client = dr.Client(
     token=os.getenv("DATAROBOT_API_TOKEN"),
-    endpoint=os.getenv("DATAROBOT_ENDPOINT", "https://app.datarobot.com")
+    endpoint=os.getenv("DATAROBOT_ENDPOINT", "https://app.datarobot.com"),
 )
 ```
 

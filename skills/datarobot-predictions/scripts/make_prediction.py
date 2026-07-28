@@ -121,18 +121,14 @@ if __name__ == "__main__":
         print(f"Error: Invalid JSON: {e}", file=sys.stderr)
         sys.exit(1)
 
-    try:
-        result = make_prediction(
-            args.deployment_id,
-            data,
-            max_explanations=args.max_explanations,
-            max_ngram_explanations=args.max_ngram_explanations,
-            threshold_high=args.threshold_high,
-            threshold_low=args.threshold_low,
-            explanation_algorithm=args.explanation_algorithm,
-            passthrough_columns=args.passthrough_columns,
-        )
-        print(json.dumps(result, indent=2, default=str))
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    result = make_prediction(
+        args.deployment_id,
+        data,
+        max_explanations=args.max_explanations,
+        max_ngram_explanations=args.max_ngram_explanations,
+        threshold_high=args.threshold_high,
+        threshold_low=args.threshold_low,
+        explanation_algorithm=args.explanation_algorithm,
+        passthrough_columns=args.passthrough_columns,
+    )
+    print(json.dumps(result, indent=2, default=str))

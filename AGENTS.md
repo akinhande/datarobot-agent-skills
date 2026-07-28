@@ -79,8 +79,7 @@ import datarobot as dr
 import os
 
 client = dr.Client(
-    token=os.getenv("DATAROBOT_API_TOKEN"),
-    endpoint=os.getenv("DATAROBOT_ENDPOINT")
+    token=os.getenv("DATAROBOT_API_TOKEN"), endpoint=os.getenv("DATAROBOT_ENDPOINT")
 )
 ```
 

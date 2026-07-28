@@ -154,8 +154,8 @@ deployment = dr.Deployment.get("abc123")
 result = dr_predict(
     deployment=deployment,
     data_frame=pd.DataFrame([{"feature1": 10, "feature2": 20}]),
-    max_explanations=3,                  # top 3 contributors per row
-    explanation_algorithm="shap",        # or "xemp"; omit for deployment default
+    max_explanations=3,  # top 3 contributors per row
+    explanation_algorithm="shap",  # or "xemp"; omit for deployment default
     # threshold_high=0.8,                # optional: only explain rows scoring > 0.8
     # threshold_low=0.2,                 # optional: only explain rows scoring < 0.2
     # passthrough_columns="all",         # optional: echo input columns through to output
@@ -266,8 +266,8 @@ prediction_data = {
 result = dr_predict(
     deployment=deployment,
     data_frame=pd.DataFrame([prediction_data]),
-    max_explanations=3,                # optional; 0/omit to disable explanations
-    explanation_algorithm="shap",      # optional; omit to use deployment default
+    max_explanations=3,  # optional; 0/omit to disable explanations
+    explanation_algorithm="shap",  # optional; omit to use deployment default
 )
 print(result.dataframe.to_dict(orient="records"))
 ```
@@ -280,13 +280,12 @@ import os
 
 # Initialize client
 client = dr.Client(
-    token=os.getenv("DATAROBOT_API_TOKEN"),
-    endpoint=os.getenv("DATAROBOT_ENDPOINT")
+    token=os.getenv("DATAROBOT_API_TOKEN"), endpoint=os.getenv("DATAROBOT_ENDPOINT")
 )
 
 # Get deployment features
 deployment = dr.Deployment.get("abc123")
-model = dr.Model.get(deployment.model['id'])
+model = dr.Model.get(deployment.model["id"])
 features = model.get_features()
 
 # Create template DataFrame
@@ -297,12 +296,12 @@ template_df = pd.DataFrame(columns=[f.name for f in prediction_features])
 for i in range(100):
     row = {}
     for feature in prediction_features:
-        if feature.feature_type == 'Numeric':
+        if feature.feature_type == "Numeric":
             row[feature.name] = 0.0
-        elif feature.feature_type == 'Categorical':
-            row[feature.name] = 'sample_value'
+        elif feature.feature_type == "Categorical":
+            row[feature.name] = "sample_value"
         else:
-            row[feature.name] = ''
+            row[feature.name] = ""
     template_df = pd.concat([template_df, pd.DataFrame([row])], ignore_index=True)
 
 # Save template
@@ -314,14 +313,8 @@ template_df.to_csv("prediction_template.csv", index=False)
 # Submit batch prediction
 job = dr.BatchPredictionJob.score(
     deployment_id=deployment.id,
-    intake_settings={
-        'type': 'localFile',
-        'file': 'prediction_template.csv'
-    },
-    output_settings={
-        'type': 'localFile',
-        'path': 'predictions_output.csv'
-    }
+    intake_settings={"type": "localFile", "file": "prediction_template.csv"},
+    output_settings={"type": "localFile", "path": "predictions_output.csv"},
 )
 
 # Monitor job
@@ -329,7 +322,7 @@ job_status = dr.BatchPredictionJob.get(job.id)
 print(f"Job status: {job_status.status}")
 
 # Download results when complete
-if job_status.status == 'completed':
+if job_status.status == "completed":
     results = dr.BatchPredictionJob.download(job.id)
 ```
 
@@ -359,7 +352,7 @@ import os
 # Initialize client with API credentials
 client = dr.Client(
     token=os.getenv("DATAROBOT_API_TOKEN"),
-    endpoint=os.getenv("DATAROBOT_ENDPOINT", "https://app.datarobot.com")
+    endpoint=os.getenv("DATAROBOT_ENDPOINT", "https://app.datarobot.com"),
 )
 ```
 

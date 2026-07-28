@@ -11,9 +11,10 @@ Usage:
 Supports CSV, Parquet, and other formats.
 """
 
-import sys
 import json
 import os
+import sys
+
 import datarobot as dr
 
 
@@ -60,9 +61,5 @@ if __name__ == "__main__":
     file_path = sys.argv[1]
     dataset_name = sys.argv[2]
 
-    try:
-        result = upload_dataset(file_path, dataset_name)
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    result = upload_dataset(file_path, dataset_name)
+    print(json.dumps(result, indent=2))

@@ -31,6 +31,7 @@ configure_otel()
 
 # Auto-instrument LlamaIndex — must be called AFTER configure_otel()
 from opentelemetry.instrumentation.llamaindex import LlamaIndexInstrumentor
+
 LlamaIndexInstrumentor().instrument()
 
 # Your LlamaIndex code below...
@@ -55,7 +56,9 @@ LlamaIndex also has a built-in OpenTelemetry callback handler. If the auto-instr
 
 ```python
 from llama_index.core.callbacks import CallbackManager
-from llama_index.core.callbacks.open_inference_callback import OpenInferenceCallbackHandler
+from llama_index.core.callbacks.open_inference_callback import (
+    OpenInferenceCallbackHandler,
+)
 
 callback_manager = CallbackManager([OpenInferenceCallbackHandler()])
 # Pass callback_manager to your index/query engine

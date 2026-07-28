@@ -11,9 +11,10 @@ Usage:
 Sort options: AUC, RMSE, accuracy (default: by validation score)
 """
 
-import sys
 import json
 import os
+import sys
+
 import datarobot as dr
 
 
@@ -48,7 +49,7 @@ def list_models(project_id: str, sort_by: str = "validation") -> dict:
                 "metrics": metrics,
             }
             model_list.append(model_info)
-        except Exception:
+        except dr.errors.ClientError:
             model_info = {
                 "model_id": model.id,
                 "model_type": model.model_type,
@@ -77,9 +78,5 @@ if __name__ == "__main__":
     project_id = sys.argv[1]
     sort_by = sys.argv[2] if len(sys.argv) > 2 else "validation"
 
-    try:
-        result = list_models(project_id, sort_by)
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    result = list_models(project_id, sort_by)
+    print(json.dumps(result, indent=2))

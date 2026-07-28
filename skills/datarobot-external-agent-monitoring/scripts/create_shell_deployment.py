@@ -23,6 +23,16 @@ import sys
 
 import datarobot as dr
 
+# Raised when a tenant does not support an optional target type or deployment
+# setting: the API rejects the call (ClientError) or the async settings update
+# never resolves. Each call site below degrades gracefully instead of failing.
+_UNSUPPORTED_FEATURE_ERRORS = (
+    dr.errors.ClientError,
+    dr.errors.AsyncTimeoutError,
+    dr.errors.AsyncFailureError,
+    dr.errors.AsyncProcessUnsuccessfulError,
+)
+
 
 def _otel_endpoint(api_endpoint: str) -> str:
     """Derive OTel endpoint from the API endpoint.
@@ -31,8 +41,7 @@ def _otel_endpoint(api_endpoint: str) -> str:
     OTel endpoint: https://app.datarobot.com/otel
     """
     base = api_endpoint.rstrip("/")
-    if base.endswith("/api/v2"):
-        base = base[: -len("/api/v2")]
+    base = base.removesuffix("/api/v2")
     return f"{base}/otel"
 
 
@@ -96,7 +105,7 @@ def create_shell_deployment(name: str, description: str) -> dict:
             registered_model_name=name,
             registered_model_description=description,
         )
-    except Exception as e:
+    except _UNSUPPORTED_FEATURE_ERRORS as e:
         print(
             f"Warning: AgenticWorkflow target type failed ({e}). "
             "Retrying with TextGeneration.",
@@ -121,7 +130,7 @@ def create_shell_deployment(name: str, description: str) -> dict:
     # Prediction row storage: stores prediction inputs/outputs for monitoring
     try:
         deployment.update_predictions_data_collection_settings(enabled=True)
-    except Exception as e:
+    except _UNSUPPORTED_FEATURE_ERRORS as e:
         print(
             f"Warning: Could not enable prediction row storage: {e}",
             file=sys.stderr,
@@ -144,7 +153,7 @@ def create_shell_deployment(name: str, description: str) -> dict:
         from datarobot.utils.waiters import wait_for_async_resolution
 
         wait_for_async_resolution(client, resp.headers["Location"])
-    except Exception as e:
+    except (*_UNSUPPORTED_FEATURE_ERRORS, KeyError) as e:
         print(
             f"Warning: Could not enable automatic association ID: {e}",
             file=sys.stderr,
@@ -173,9 +182,5 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    try:
-        result = create_shell_deployment(args.name, args.description)
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    result = create_shell_deployment(args.name, args.description)
+    print(json.dumps(result, indent=2))

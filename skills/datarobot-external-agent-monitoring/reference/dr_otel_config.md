@@ -34,7 +34,12 @@ from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExp
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk._logs.export import SimpleLogRecordProcessor
-from opentelemetry.sdk.metrics import Counter, Histogram, MeterProvider, ObservableCounter
+from opentelemetry.sdk.metrics import (
+    Counter,
+    Histogram,
+    MeterProvider,
+    ObservableCounter,
+)
 from opentelemetry.sdk.metrics.export import (
     AggregationTemporality,
     PeriodicExportingMetricReader,
@@ -49,9 +54,13 @@ def _build_dr_headers():
     api_key = os.environ.get("DATAROBOT_API_TOKEN", "")
     entity_id = os.environ.get("DATAROBOT_ENTITY_ID", "")
     if not api_key:
-        logging.warning("DATAROBOT_API_TOKEN not set — OTel export to DataRobot will fail")
+        logging.warning(
+            "DATAROBOT_API_TOKEN not set — OTel export to DataRobot will fail"
+        )
     if not entity_id:
-        logging.warning("DATAROBOT_ENTITY_ID not set — OTel export to DataRobot will fail")
+        logging.warning(
+            "DATAROBOT_ENTITY_ID not set — OTel export to DataRobot will fail"
+        )
     return {
         "X-DataRobot-Entity-Id": entity_id,
         "X-DataRobot-Api-Key": api_key,
