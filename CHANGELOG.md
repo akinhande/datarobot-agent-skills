@@ -11,6 +11,15 @@ Each entry should be prefixed with the affected skill folder name (for example,
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-07-28
+
+### Added
+- `datarobot-agent-assist`: New `agent-assist-simulate` swarm skill — adversarial scenario generation, multi-turn simulation, convergence loop, and evaluation reporting.
+
+### Changed
+- `datarobot-agent-assist`: Move `check_codespace.py` into `agent-assist-build/scripts/` alongside `env_utils.py`.
+- `datarobot-agent-assist`: Pin `ruff==0.15.22` in dev dependencies to prevent silent version drift.
+
 ## [1.3.8] - 2026-07-17
 
 - `datarobot-agent-assist`: Warn when the ports needed for local agent testing (5173, 8080, 8842) are not exposed inside a DataRobot Codespace, and stop with guidance when Agent Assist runs from an unsupported working directory. New `check_codespace.py` helper wired into the Pre-requisite Check; no-op outside a Codespace.
