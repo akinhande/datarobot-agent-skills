@@ -30,7 +30,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Optional, TypedDict
+from typing import TypedDict
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -76,7 +76,7 @@ def check_working_directory() -> bool:
     return os.getcwd().startswith(CODESPACE_STORAGE_PATH)
 
 
-def load_credentials() -> tuple[Optional[str], Optional[str]]:
+def load_credentials() -> tuple[str | None, str | None]:
     """Load the DataRobot endpoint and token, preferring the environment.
 
     Inside a Codespace both values are exported into the environment, so those
@@ -131,7 +131,7 @@ def fetch_exposed_ports(
 
     try:
         request = Request(url, headers={"Authorization": f"Bearer {api_token}"})
-        with urlopen(request, timeout=10) as response:  # noqa: S310 - trusted endpoint
+        with urlopen(request, timeout=10) as response:
             payload = json.loads(response.read().decode("utf-8"))
     except (HTTPError, URLError) as e:
         raise RuntimeError(f"Failed to fetch exposed ports: {e}") from e
@@ -140,7 +140,7 @@ def fetch_exposed_ports(
 
     entries = payload.get("data", []) if isinstance(payload, dict) else payload
     if not isinstance(entries, list):
-        raise RuntimeError(f"Unexpected ports response format: {type(entries)}")
+        raise TypeError(f"Unexpected ports response format: {type(entries)}")
     ports: list[ExposedPort] = entries
     return ports
 

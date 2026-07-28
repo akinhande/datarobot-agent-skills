@@ -85,6 +85,7 @@ def test_gemini_extension_validate() -> None:
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
+        check=False,
     )
     assert result.returncode == 0, (
         f"`gemini extensions validate .` failed:\n{result.stdout}\n{result.stderr}"
@@ -98,6 +99,7 @@ def test_claude_plugin_validate() -> None:
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
+        check=False,
     )
     assert result.returncode == 0, (
         f"`claude plugin validate .` failed:\n{result.stdout}\n{result.stderr}"

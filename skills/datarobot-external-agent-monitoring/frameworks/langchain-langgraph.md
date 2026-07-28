@@ -31,6 +31,7 @@ configure_otel()
 
 # Auto-instrument LangChain — must be called AFTER configure_otel()
 from opentelemetry.instrumentation.langchain import LangchainInstrumentor
+
 LangchainInstrumentor().instrument()
 
 # Your agent code below...
@@ -47,6 +48,7 @@ The auto-instrumentor captures:
 
 ```python
 from opentelemetry import trace
+
 
 @tool
 def search_database(query: str) -> str:
@@ -65,6 +67,7 @@ If the agent uses OpenAI or Anthropic SDKs directly (in addition to LangChain), 
 ```python
 # Optional — for direct SDK calls outside LangChain
 from opentelemetry.instrumentation.openai import OpenAIInstrumentor
+
 OpenAIInstrumentor().instrument()
 ```
 
@@ -94,13 +97,16 @@ request_duration = meter.create_histogram("agent.request.duration_ms", unit="ms"
 # Use LangChain's callback system to record metrics
 from langchain_core.callbacks import BaseCallbackHandler
 
+
 class DataRobotMetricsHandler(BaseCallbackHandler):
     def on_chain_start(self, serialized, inputs, **kwargs):
         import time
+
         kwargs.setdefault("metadata", {})["_dr_start"] = time.time()
 
     def on_chain_end(self, outputs, **kwargs):
         import time
+
         start = kwargs.get("metadata", {}).get("_dr_start", time.time())
         elapsed_ms = (time.time() - start) * 1000
         request_counter.add(1, {"status": "success"})

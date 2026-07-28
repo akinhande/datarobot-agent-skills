@@ -14,6 +14,19 @@ You play the **end user**. The rehearsal script drives the LLM, simulates tool o
 
 **Engine location:** `<skill_scripts_dir>/rehearsal.py`
 
+### Initial prompt (design phase)
+
+Before transitioning to coding, explain dress rehearsal briefly, then ask (exact wording):
+
+> **Dress rehearsal** is a try-before-you-build session: you chat with your agent design as if it were already running. The agent uses your spec's model and system prompt; tool calls return **simulated** (fake but realistic) data — no real APIs, no deployment, no code written yet. It's a safe way to test prompts, tools, and conversation flow before implementation.
+>
+> Would you like to run a dress rehearsal simulation first? (recommended)
+
+Wait for their reply:
+
+- **If yes** — follow this document end to end. Do not substitute improvised role-play or manual mock tool traces.
+- **If no** (or any decline such as "no", "skip", "not now") — go to **[Post-design next steps](../SKILL.md#post-design-next-steps)**. Do not jump to coding, framework selection, or template setup.
+
 ### Visual presentation (required)
 
 Rehearsal must look visually distinct from normal design/coding chat. Display rehearsal output **verbatim from the first line to the last** — do not truncate, summarize, or replace the closing lines. Each turn is wrapped with a symmetric `─ ★ Agent Dress Rehearsal ★ ─` line at the **top and bottom**, followed by continuation hints and `Type DONE to end the rehearsal session.` **Do not** rephrase those hints in your own words.
@@ -26,7 +39,7 @@ While a rehearsal session is active:
 ### Step 1 — Initialize the session
 
 ```bash
-python <skill_scripts_dir>/rehearsal.py --init [--spec agent_spec.md]
+python <skill_scripts_dir>/rehearsal.py --init --spec <target_dir>/agent_spec.md --target-dir <target_dir>
 ```
 
 If `agent_spec.md` does not exist and no path was provided, say so and stop.
@@ -58,6 +71,8 @@ Keep track of any notes and the number of turns as the session progresses — yo
 ```bash
 python <skill_scripts_dir>/rehearsal.py --session {session_dir} "{user_message}"
 ```
+
+`--target-dir` is optional on turns — the session stores it from `--init`. You may pass `--target-dir <target_dir>` again to override.
 
 The script prints `output=<output_file>`.
 

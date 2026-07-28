@@ -126,8 +126,7 @@ import os
 
 # Initialize client
 client = dr.Client(
-    token=os.getenv("DATAROBOT_API_TOKEN"),
-    endpoint=os.getenv("DATAROBOT_ENDPOINT")
+    token=os.getenv("DATAROBOT_API_TOKEN"), endpoint=os.getenv("DATAROBOT_ENDPOINT")
 )
 
 # Get deployment
@@ -219,7 +218,7 @@ import os
 
 client = dr.Client(
     token=os.getenv("DATAROBOT_API_TOKEN"),
-    endpoint=os.getenv("DATAROBOT_ENDPOINT", "https://app.datarobot.com")
+    endpoint=os.getenv("DATAROBOT_ENDPOINT", "https://app.datarobot.com"),
 )
 ```
 

@@ -8,7 +8,7 @@ This script fetches and displays active models from the DataRobot LLM Gateway ca
 Designed to be used by AI agents to discover available LLM models.
 
 Usage:
-    python list_llm_models.py [--json|--table]
+    python list_llm_models.py [--json|--table] [--target-dir <directory>]
 
 Environment Variables:
     DATAROBOT_ENDPOINT: DataRobot API endpoint URL
@@ -17,14 +17,13 @@ Environment Variables:
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 from typing import TypedDict
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from env_utils import ensure_env_file, read_env_variable
+from env_utils import get_datarobot_credentials
 
 
 class LLMModel(TypedDict):
@@ -55,7 +54,7 @@ def fetch_llm_models(endpoint: str, api_token: str) -> list[LLMModel]:
             url,
             headers={"Authorization": f"Bearer {api_token}"},
         )
-        with urlopen(request, timeout=30) as response:  # noqa: S310 - trusted DataRobot endpoint
+        with urlopen(request, timeout=30) as response:
             data = json.loads(response.read().decode("utf-8"))
 
         # Handle both list and dict responses
@@ -155,35 +154,18 @@ def main() -> int:
         action="store_true",
         help="Output in table format (default)",
     )
+    parser.add_argument(
+        "--target-dir",
+        required=True,
+        help="Project directory for .env lookup (required — use the session <target_dir>)",
+    )
     args = parser.parse_args()
 
-    # Try to get credentials from .env file first, then fall back to environment
-    env_file = Path(".env")
-
-    # Ensure .env file exists (run dr dotenv setup if needed)
-    ensure_env_file(env_file)
-
-    endpoint = None
-    api_token = None
-
-    # Try .env file first
-    if env_file.exists():
-        try:
-            endpoint = read_env_variable(env_file, "DATAROBOT_ENDPOINT")
-        except ValueError:
-            pass  # Variable not in .env, will try environment
-
-        try:
-            api_token = read_env_variable(env_file, "DATAROBOT_API_TOKEN")
-        except ValueError:
-            pass  # Variable not in .env, will try environment
-
-    # Fall back to environment variables if not found in .env
-    if not endpoint:
-        endpoint = os.getenv("DATAROBOT_ENDPOINT")
-
-    if not api_token:
-        api_token = os.getenv("DATAROBOT_API_TOKEN")
+    target_dir = Path(args.target_dir).resolve()
+    if not target_dir.is_dir():
+        print(f"Error: target directory does not exist: {target_dir}", file=sys.stderr)
+        return 1
+    endpoint, api_token = get_datarobot_credentials(target_dir)
 
     if not endpoint and not api_token:
         print("Error: DATAROBOT_ENDPOINT environment variable not set", file=sys.stderr)
@@ -216,9 +198,6 @@ def main() -> int:
 
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
-        return 1
-    except Exception as e:
-        print(f"Unexpected error: {e}", file=sys.stderr)
         return 1
 
     return 0

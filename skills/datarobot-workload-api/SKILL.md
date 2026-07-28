@@ -127,15 +127,29 @@ If the container serves a **web app (UI + its own backend/API/WebSocket)** opene
 `PATCH /workloads/{wid}/settings/` with full body shape — use exactly one of `replicaCount` or `autoscaling`. Read settings first via `GET /workloads/{wid}/settings/`, then PATCH back:
 
 ```python
-httpx.patch(f"{base}/workloads/{wid}/settings/", headers=headers, json={
-    "runtime": {"containerGroups": [{
-        "name": "default", "replicaCount": 3,
-        "containers": [{"name": "main", "resourceAllocation": {"cpu": 2, "memory": "1GB"}}],
-        # OR: "autoscaling": {"enabled": True, "policies": [{
-        #       "scalingMetric": "cpuAverageUtilization",
-        #       "target": 70, "minCount": 1, "maxCount": 10}]}
-    }]}
-})
+httpx.patch(
+    f"{base}/workloads/{wid}/settings/",
+    headers=headers,
+    json={
+        "runtime": {
+            "containerGroups": [
+                {
+                    "name": "default",
+                    "replicaCount": 3,
+                    "containers": [
+                        {
+                            "name": "main",
+                            "resourceAllocation": {"cpu": 2, "memory": "1GB"},
+                        }
+                    ],
+                    # OR: "autoscaling": {"enabled": True, "policies": [{
+                    #       "scalingMetric": "cpuAverageUtilization",
+                    #       "target": 70, "minCount": 1, "maxCount": 10}]}
+                }
+            ]
+        }
+    },
+)
 ```
 
 Valid `scalingMetric` values: `cpuAverageUtilization`, `httpRequestsConcurrency`, `gpuCacheUtilization`, `gpuRequestQueueDepth`, or a custom NIM metric. Settings updates are **rolling**; zero-downtime only with `replicaCount >= 2` (or autoscaling `minCount >= 2`).
@@ -225,9 +239,16 @@ dr workload logs <wid> --level error --limit 100   # v0.2.74+; --follow streams;
 `--level` is an EXACT severity match (not a threshold). For substring filtering on the message body, or proton-scoped logs (find proton IDs in section 2), drop to REST — `dr workload logs` doesn't expose those filters:
 
 ```python
-r = httpx.get(f"{base}/otel/workload/{wid}/logs/", headers=headers,
-              params=[("searchKeys", "proton_id"), ("searchValues", pid),
-                      ("searchKeys", "level"),     ("searchValues", "error")])
+r = httpx.get(
+    f"{base}/otel/workload/{wid}/logs/",
+    headers=headers,
+    params=[
+        ("searchKeys", "proton_id"),
+        ("searchValues", pid),
+        ("searchKeys", "level"),
+        ("searchValues", "error"),
+    ],
+)
 ```
 
 `searchKeys` / `searchValues` are positional parallel lists — pass a **list of tuples** to httpx (dict can't repeat keys). `includes=<substring>` does case-sensitive substring filtering on the message body.
@@ -235,10 +256,17 @@ r = httpx.get(f"{base}/otel/workload/{wid}/logs/", headers=headers,
 ## Traces
 
 ```python
-traces = httpx.get(f"{base}/otel/workload/{wid}/traces/", headers=headers).json()["data"]
+traces = httpx.get(f"{base}/otel/workload/{wid}/traces/", headers=headers).json()[
+    "data"
+]
 # summary: traceId, rootSpanName, rootServiceName, duration (NANOSECONDS), spansCount, errorSpansCount
-trace_id = next((t["traceId"] for t in traces if t.get("errorSpansCount", 0) > 0), traces[0]["traceId"])
-trace = httpx.get(f"{base}/otel/workload/{wid}/traces/{trace_id}/", headers=headers).json()
+trace_id = next(
+    (t["traceId"] for t in traces if t.get("errorSpansCount", 0) > 0),
+    traces[0]["traceId"],
+)
+trace = httpx.get(
+    f"{base}/otel/workload/{wid}/traces/{trace_id}/", headers=headers
+).json()
 ```
 
 > **`duration` is NANOSECONDS** on summaries AND spans. Divide by 1,000,000 for ms before display. Empty `data` = app isn't instrumented; direct the user to wire up OTEL.
@@ -290,12 +318,16 @@ Poll builds with `python scripts/wait_for_build.py <artifact_id> <build_id>`; on
 ## Rolling artifact replacement
 
 ```python
-httpx.post(f"{base}/workloads/{wid}/replacement/", headers=headers, json={
-    "artifactId": new_artifact_id,
-    "strategy": "rolling",                   # only "rolling" supported
-    "config": {"warmupDurationMinutes": 2, "keepOldVersionMinutes": 5},  # optional
-    # "runtime": {...}  # optional; same shape as PATCH /settings/
-})
+httpx.post(
+    f"{base}/workloads/{wid}/replacement/",
+    headers=headers,
+    json={
+        "artifactId": new_artifact_id,
+        "strategy": "rolling",  # only "rolling" supported
+        "config": {"warmupDurationMinutes": 2, "keepOldVersionMinutes": 5},  # optional
+        # "runtime": {...}  # optional; same shape as PATCH /settings/
+    },
+)
 ```
 
 Monitor with `python scripts/wait_for_replacement.py <workload_id>`. Preconditions: status must match (draft↔draft / locked↔locked, else `400`); same-artifact replacement 422s for locked but works for drafts — to roll the same draft without replacement use `PATCH /settings/`. **Not idempotent** (a second `POST` queues another swap); `GET .../replacement/` `404` = none in progress; `DELETE` to cancel. Detail in `references/lifecycle-flows.md`.
