@@ -6,7 +6,7 @@ description: >-
   swarm simulation, or the DataRobot agent template; wants to scaffold a LangGraph, CrewAI, LlamaIndex, NAT, or Base
   agent targeting DataRobot; wants to add an MCP server, backend API, or React frontend to a
   DataRobot agent application; or uses the DataRobot CLI (dr) to build or deploy an agentic custom
-  application. Covers the full workflow: agent design, agent_spec.md authoring, dress-rehearsal
+  application; or wants to harden, stress-test, or battle-test an agent. Covers the full workflow: agent design, agent_spec.md authoring, dress-rehearsal
   simulation via the DataRobot LLM Gateway, adversarial swarm simulation, template-based coding, and deployment.
 ---
 
