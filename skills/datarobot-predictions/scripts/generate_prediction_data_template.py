@@ -11,14 +11,15 @@ Usage:
 Generates a CSV template with all required columns and sample values.
 """
 
-import sys
 import csv
 import os
+import sys
+
 import datarobot as dr
 
 
 def generate_prediction_data_template(
-    deployment_id: str, n_rows: int = 1, output_file: str = None
+    deployment_id: str, n_rows: int = 1, output_file: str | None = None
 ) -> str:
     """
     Generate a CSV template for prediction data.
@@ -105,9 +106,5 @@ if __name__ == "__main__":
     n_rows = int(sys.argv[2]) if len(sys.argv) > 2 else 1
     output_file = sys.argv[3] if len(sys.argv) > 3 else None
 
-    try:
-        result = generate_prediction_data_template(deployment_id, n_rows, output_file)
-        print(result)
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    result = generate_prediction_data_template(deployment_id, n_rows, output_file)
+    print(result)

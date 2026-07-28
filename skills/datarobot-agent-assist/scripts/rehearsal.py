@@ -17,21 +17,21 @@ From repository root, use:
 import argparse
 import concurrent.futures
 import contextlib
+import functools
 import json
 import os
 import sys
 import tempfile
 import threading
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, cast
 
 from env_utils import get_datarobot_credentials
 from list_llm_models import fetch_llm_models
-
 
 # Model used for spec extraction and tool simulation.
 # The agent's own model (from the spec) is used for the main turn loop.
@@ -696,23 +696,18 @@ def cmd_turn(session_dir: str, message: str, target_dir: Path | None = None) -> 
 
         if finish_reason == "tool_calls" or msg.get("tool_calls"):
             messages.append(msg)
-            lock = threading.Lock()
+            run_tool = functools.partial(
+                run_tool_call,
+                token=token,
+                endpoint=endpoint,
+                simulation_model=simulation_model,
+                spec_tools=spec_tools,
+                catalog=catalog,
+                stats=stats,
+                lock=threading.Lock(),
+            )
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                results = list(
-                    executor.map(
-                        lambda tc: run_tool_call(
-                            tc,
-                            token,
-                            endpoint,
-                            simulation_model,
-                            spec_tools,
-                            catalog,
-                            stats,
-                            lock,
-                        ),
-                        msg["tool_calls"],
-                    )
-                )
+                results = list(executor.map(run_tool, msg["tool_calls"]))
             tool_messages = [r[0] for r in results]
             simulation_model = results[-1][1]
             if simulation_model != config.get("simulation_model"):

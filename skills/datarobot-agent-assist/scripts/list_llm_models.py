@@ -54,7 +54,7 @@ def fetch_llm_models(endpoint: str, api_token: str) -> list[LLMModel]:
             url,
             headers={"Authorization": f"Bearer {api_token}"},
         )
-        with urlopen(request, timeout=30) as response:  # noqa: S310 - trusted DataRobot endpoint
+        with urlopen(request, timeout=30) as response:
             data = json.loads(response.read().decode("utf-8"))
 
         # Handle both list and dict responses
@@ -198,9 +198,6 @@ def main() -> int:
 
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
-        return 1
-    except Exception as e:
-        print(f"Unexpected error: {e}", file=sys.stderr)
         return 1
 
     return 0

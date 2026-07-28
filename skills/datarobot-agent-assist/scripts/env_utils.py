@@ -81,9 +81,7 @@ def ensure_env_file(env_file: Path) -> None:
         )
         print(result.stdout)
     except subprocess.CalledProcessError as e:
-        print(
-            f"Warning: Failed to run 'dr dotenv setup': {e.stderr}", file=sys.stderr
-        )
+        print(f"Warning: Failed to run 'dr dotenv setup': {e.stderr}", file=sys.stderr)
         print("Falling back to environment variables...", file=sys.stderr)
     except FileNotFoundError:
         print(

@@ -16,8 +16,8 @@ import argparse
 import os
 from typing import Any
 
-import pandas as pd
 import datarobot as dr
+import pandas as pd
 from datarobot.insights import ShapMatrix
 
 

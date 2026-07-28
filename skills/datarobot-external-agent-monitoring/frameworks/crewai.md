@@ -31,6 +31,7 @@ configure_otel()
 
 # Auto-instrument CrewAI — must be called AFTER configure_otel()
 from opentelemetry.instrumentation.crewai import CrewAIInstrumentor
+
 CrewAIInstrumentor().instrument()
 
 # Your crew code below...

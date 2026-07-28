@@ -155,40 +155,33 @@ import os
 
 # Initialize client
 client = dr.Client(
-    token=os.getenv("DATAROBOT_API_TOKEN"),
-    endpoint=os.getenv("DATAROBOT_ENDPOINT")
+    token=os.getenv("DATAROBOT_API_TOKEN"), endpoint=os.getenv("DATAROBOT_ENDPOINT")
 )
 
 # Upload dataset
-dataset = dr.Dataset.create_from_file(
-    file_path="training_data.csv",
-    name="Sales Data"
-)
+dataset = dr.Dataset.create_from_file(file_path="training_data.csv", name="Sales Data")
 
 # Create project
 project = dr.Project.create_from_dataset(
-    dataset_id=dataset.id,
-    project_name="Sales Prediction"
+    dataset_id=dataset.id, project_name="Sales Prediction"
 )
 
 # Set target
-project.set_target(
-    target="revenue",
-    mode=dr.AUTOPILOT_MODE.QUICK
-)
+project.set_target(target="revenue", mode=dr.AUTOPILOT_MODE.QUICK)
 
 # Start AutoML (Quick mode)
 project.start(autopilot_on=True, max_wait=3600)
 
 # Monitor training
-while project.get_status()['status'] not in ['complete', 'error']:
+while project.get_status()["status"] not in ["complete", "error"]:
     import time
+
     time.sleep(30)
     project.get_status()
 
 # Get trained models
 models = dr.Model.list(project.id)
-best_model = max(models, key=lambda m: m.metrics.get('AUC', 0))
+best_model = max(models, key=lambda m: m.metrics.get("AUC", 0))
 print(f"Best model: {best_model.id}, AUC: {best_model.metrics.get('AUC')}")
 ```
 
@@ -201,8 +194,7 @@ dataset = dr.Dataset.create_from_file("sales_data.csv", "Sales Forecast Data")
 
 # Create project
 project = dr.Project.create_from_dataset(
-    dataset_id=dataset.id,
-    project_name="Sales Forecast"
+    dataset_id=dataset.id, project_name="Sales Forecast"
 )
 
 # Configure time series settings
@@ -213,7 +205,7 @@ project.set_target(
     datetime_partition_column="date",
     multiseries_id_columns=["store_id"],
     forecast_window_start=1,
-    forecast_window_end=7
+    forecast_window_end=7,
 )
 
 # Start training
@@ -259,7 +251,7 @@ import os
 
 client = dr.Client(
     token=os.getenv("DATAROBOT_API_TOKEN"),
-    endpoint=os.getenv("DATAROBOT_ENDPOINT", "https://app.datarobot.com")
+    endpoint=os.getenv("DATAROBOT_ENDPOINT", "https://app.datarobot.com"),
 )
 ```
 

@@ -21,7 +21,6 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
 
 REPO_URL = "https://github.com/datarobot-community/datarobot-agent-application.git"
 BRANCH: str | None = None
@@ -70,11 +69,11 @@ def run_git_command(
 
     except subprocess.TimeoutExpired:
         return False, f"Command timed out after {timeout} seconds"
-    except Exception as e:
+    except OSError as e:
         return False, str(e)
 
 
-def check_guardrails(target_dir: Path) -> tuple[bool, Optional[str]]:
+def check_guardrails(target_dir: Path) -> tuple[bool, str | None]:
     """
     Check guardrails before cloning.
 

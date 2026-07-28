@@ -141,14 +141,12 @@ import os
 
 # Initialize client
 client = dr.Client(
-    token=os.getenv("DATAROBOT_API_TOKEN"),
-    endpoint=os.getenv("DATAROBOT_ENDPOINT")
+    token=os.getenv("DATAROBOT_API_TOKEN"), endpoint=os.getenv("DATAROBOT_ENDPOINT")
 )
 
 # Upload dataset
 dataset = dr.Dataset.create_from_file(
-    file_path="sales_data.csv",
-    name="Sales Data Q4 2024"
+    file_path="sales_data.csv", name="Sales Data Q4 2024"
 )
 
 print(f"Dataset ID: {dataset.id}")
@@ -232,7 +230,7 @@ import os
 
 client = dr.Client(
     token=os.getenv("DATAROBOT_API_TOKEN"),
-    endpoint=os.getenv("DATAROBOT_ENDPOINT", "https://app.datarobot.com")
+    endpoint=os.getenv("DATAROBOT_ENDPOINT", "https://app.datarobot.com"),
 )
 ```
 

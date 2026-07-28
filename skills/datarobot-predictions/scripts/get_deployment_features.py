@@ -11,9 +11,10 @@ Usage:
 Outputs JSON with feature information, types, importance, and time series config.
 """
 
-import sys
 import json
 import os
+import sys
+
 import datarobot as dr
 
 
@@ -70,8 +71,11 @@ def get_deployment_features(deployment_id: str) -> dict:
                 "forecast_window_end": time_series_info.forecast_window_end,
                 "series_id_columns": time_series_info.multiseries_id_columns or [],
             }
-        except Exception:
-            pass
+        except dr.errors.ClientError as e:
+            print(
+                f"Note: time series info unavailable: {e}",
+                file=sys.stderr,
+            )
 
     return {
         "deployment_id": deployment_id,
@@ -91,9 +95,5 @@ if __name__ == "__main__":
         sys.exit(1)
 
     deployment_id = sys.argv[1]
-    try:
-        result = get_deployment_features(deployment_id)
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    result = get_deployment_features(deployment_id)
+    print(json.dumps(result, indent=2))

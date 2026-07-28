@@ -123,7 +123,9 @@ If the user already uses Logfire or wants richer PydanticAI-specific spans:
 ```python
 import logfire
 
-logfire.configure(send_to_logfire=False)  # don't send to Logfire cloud; keep global provider
+logfire.configure(
+    send_to_logfire=False
+)  # don't send to Logfire cloud; keep global provider
 logfire.instrument_pydantic_ai()
 ```
 
@@ -150,6 +152,7 @@ from opentelemetry import metrics
 meter = metrics.get_meter("my-pydantic-agent")
 request_counter = meter.create_counter("agent.requests", unit="1")
 request_duration = meter.create_histogram("agent.request.duration_ms", unit="ms")
+
 
 async def run_with_metrics(agent, prompt):
     start = time.time()

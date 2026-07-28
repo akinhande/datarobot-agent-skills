@@ -11,10 +11,11 @@ Usage:
 Returns validation report with errors, warnings, and info messages.
 """
 
-import sys
 import csv
 import json
 import os
+import sys
+
 import datarobot as dr
 
 
@@ -105,8 +106,11 @@ def validate_prediction_data(deployment_id: str, file_path: str) -> dict:
             warnings.append(
                 f"Missing low-importance features: {', '.join(sorted(missing_low_importance))}"
             )
-    except Exception:
-        pass
+    except dr.errors.ClientError as e:
+        print(
+            f"Note: feature impact unavailable, skipping importance warnings: {e}",
+            file=sys.stderr,
+        )
 
     return {
         "valid": len(errors) == 0,
@@ -131,9 +135,5 @@ if __name__ == "__main__":
     deployment_id = sys.argv[1]
     file_path = sys.argv[2]
 
-    try:
-        result = validate_prediction_data(deployment_id, file_path)
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    result = validate_prediction_data(deployment_id, file_path)
+    print(json.dumps(result, indent=2))

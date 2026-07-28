@@ -35,8 +35,7 @@ import datarobot as dr
 def _base_url(api_endpoint: str) -> str:
     """Strip a trailing /api/v2 to get the instance base URL."""
     base = api_endpoint.rstrip("/")
-    if base.endswith("/api/v2"):
-        base = base[: -len("/api/v2")]
+    base = base.removesuffix("/api/v2")
     return base
 
 
@@ -115,9 +114,5 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    try:
-        result = resolve_use_case(args.name, args.description, args.use_case_id)
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    result = resolve_use_case(args.name, args.description, args.use_case_id)
+    print(json.dumps(result, indent=2))
