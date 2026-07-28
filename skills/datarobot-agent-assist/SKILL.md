@@ -18,10 +18,10 @@ Assistance falls into four categories:
 
 1. **Designing an AI agent** → Clarify requirements, build `agent_spec.md`, optionally simulate the agent before coding
 2. **Coding an AI agent** → Adapt the DataRobot agent application template to the spec
-3. **Deploying an AI agent** → Follow `AGENTS.md` deployment instructions
-4. **Battle-testing an AI agent** → Run adversarial swarm simulation against an implemented agent
+3. **Battle-testing an AI agent** → Run adversarial swarm simulation against an implemented agent
+4. **Deploying an AI agent** → Follow `AGENTS.md` deployment instructions
 
-If the user's first message is simply `1`, `2`, `3`, or `4`, treat it as selecting one of these categories.
+A first message of `1`–`4` selects the corresponding category.
 
 ---
 
@@ -48,15 +48,15 @@ Welcome! I help you design, code, battle-test, and deploy AI agents.
 What would you like to do?
   1. Design an AI agent     → Describe your idea (optional dress rehearsal before coding)
   2. Code an AI agent       → Load and implement an existing agent_spec.md
-  3. Deploy an AI agent     → Deploy an implemented agent to DataRobot
-  4. Battle-test the agent  → Run adversarial swarm simulation on an implemented agent
+  3. Battle-test the agent  → Run adversarial swarm simulation on an implemented agent
+  4. Deploy                 → Deploy an implemented agent to DataRobot
 ```
 
 Show this menu first. After the user selects an option (`1`, `2`, `3`, or `4`), run the **[Pre-requisite Check](#pre-requisite-check)** (once per session) and then the **[Script Path Resolution](#script-path-resolution)**.
 
 - Options **1** and **2** — read and follow [agent-assist-build/references/workspace-resolution.md](agent-assist-build/references/workspace-resolution.md), then proceed to the selected workflow.
-- Option **3** — skip Workspace Resolution; `<target_dir>` is resolved in the [Pre-deployment Checklist](agent-assist-build/references/pre-deployment-checklist.md) when unset.
-- Option **4** — read `agent-assist-simulate/SKILL.md` and jump to **Pre-flight Check**.
+- Option **3** — read `agent-assist-simulate/SKILL.md` and jump to **Pre-flight Check** (Pre-requisite Check and Script Path Resolution still apply first).
+- Option **4** — skip Workspace Resolution; `<target_dir>` is resolved in the [Pre-deployment Checklist](agent-assist-build/references/pre-deployment-checklist.md) when unset.
 
 ---
 
@@ -252,23 +252,21 @@ Read and follow [agent-assist-build/references/pre-coding-checklist.md](agent-as
 2. Display the command in a code block.
 3. Tell the user: "Run this command in a **new terminal** in `<target_dir>` to test the agent locally."
 4. Do **not** run the command yourself.
-5. Present next steps: revise the implementation, or deploy to DataRobot (follow [agent-assist-build/references/pre-deployment-checklist.md](agent-assist-build/references/pre-deployment-checklist.md)).
+5. Present next steps: revise the implementation, battle-test the agent (option 3), or deploy to DataRobot (option 4).
 
 ---
 
-## 3. Deploying an AI Agent
+## 3. Battle-testing an AI Agent
+
+Read `agent-assist-simulate/SKILL.md` and jump directly to **Pre-flight Check** — skip its On Activation menu. Also trigger directly when the user says "simulate my agent", "run swarm", "adversarial testing", "harden my agent", or "test my agent".
+
+Swarm requires an implemented agent; if none exists, explain and offer option 2. If code exists and no option is chosen, proactively offer: "I can also battle-test your agent before deploying — want to run swarm simulation?"
+
+---
+
+## 4. Deploying an AI Agent
 
 Read and follow [agent-assist-build/references/pre-deployment-checklist.md](agent-assist-build/references/pre-deployment-checklist.md) end to end.
-
----
-
-## 4. Battle-testing an AI Agent
-
-Read `agent-assist-simulate/SKILL.md` and jump directly to **Pre-flight Check** — skip that sub-skill's own On Activation menu.
-
-Also trigger this section directly when the user says "simulate my agent", "run swarm", "adversarial testing", "harden my agent", or "test my agent". Swarm simulation requires an implemented agent; if none exists, explain this and offer option 2 (Code an AI agent).
-
-If implementation code exists and the user has not explicitly chosen an option, proactively mention: "I can also battle-test your agent before deploying — want to run swarm simulation?"
 
 ---
 
