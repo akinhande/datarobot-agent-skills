@@ -22,7 +22,7 @@ import time
 from pathlib import Path
 
 # One project-local log for swarm and convergence workers (relative to agent cwd).
-METRICS_PATH = Path(".datarobot/swarm/metrics.jsonl")
+METRICS_PATH = Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")) / "metrics.jsonl"
 PROMPT_ROLE_MAP = {
     "generate-attack.md": "generator/attack",
     "generate-behavior.md": "generator/behavior",

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -651,7 +652,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "--config", type=Path, default=Path("agent_config.yaml")
     )
     prepare_parser.add_argument(
-        "--runs-dir", type=Path, default=Path(".datarobot/swarm/runs")
+        "--runs-dir",
+        type=Path,
+        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")) / "runs",
     )
     prepare_parser.add_argument(
         "--implementation", type=Path, action="append", default=None
@@ -666,10 +669,14 @@ def _build_parser() -> argparse.ArgumentParser:
         "--config", type=Path, default=Path("agent_config.yaml")
     )
     aggregate_parser.add_argument(
-        "--runs-dir", type=Path, default=Path(".datarobot/swarm/runs")
+        "--runs-dir",
+        type=Path,
+        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")) / "runs",
     )
     aggregate_parser.add_argument(
-        "--output", type=Path, default=Path(".datarobot/swarm/results.json")
+        "--output",
+        type=Path,
+        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")) / "results.json",
     )
 
     run_parser = subparsers.add_parser("run")
@@ -681,10 +688,14 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     run_parser.add_argument("--config", type=Path, default=Path("agent_config.yaml"))
     run_parser.add_argument(
-        "--runs-dir", type=Path, default=Path(".datarobot/swarm/runs")
+        "--runs-dir",
+        type=Path,
+        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")) / "runs",
     )
     run_parser.add_argument(
-        "--output", type=Path, default=Path(".datarobot/swarm/results.json")
+        "--output",
+        type=Path,
+        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")) / "results.json",
     )
     run_parser.add_argument(
         "--implementation", type=Path, action="append", default=None

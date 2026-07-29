@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 from typing import Literal
@@ -264,17 +265,23 @@ def _build_parser() -> argparse.ArgumentParser:
         "--config", type=Path, default=Path("agent_config.yaml")
     )
     prepare_parser.add_argument(
-        "--work-dir", type=Path, default=Path(".datarobot/swarm")
+        "--work-dir",
+        type=Path,
+        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")),
     )
 
     finalize_parser = subparsers.add_parser("finalize")
     finalize_parser.add_argument(
-        "--work-dir", type=Path, default=Path(".datarobot/swarm")
+        "--work-dir",
+        type=Path,
+        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")),
     )
 
     confirm_parser = subparsers.add_parser("confirm")
     confirm_parser.add_argument(
-        "--work-dir", type=Path, default=Path(".datarobot/swarm")
+        "--work-dir",
+        type=Path,
+        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")),
     )
     confirm_parser.add_argument(
         "--output", type=Path, default=Path("evaluation_criteria.md")

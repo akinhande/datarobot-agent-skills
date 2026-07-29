@@ -41,6 +41,14 @@ dr auth check
 
 If any check fails, surface the error and stop.
 
+**Swarm directory:** Create a temporary directory for all scratch files generated during this session:
+
+```bash
+export SWARM_DIR=$(python3 -c "import tempfile; print(tempfile.mkdtemp(prefix='dr_swarm_'))")
+```
+
+All intermediate files (scenario inputs/outputs, run results, convergence state) are written here and deleted at the end of Step 5.
+
 ---
 
 ## Pre-flight Check
@@ -122,36 +130,36 @@ Say: `"Generating attack scenarios — these test whether the agent can be manip
 ```bash
 <python> <skill_scripts_dir>/gateway_worker.py \
   --role-prompt generate-attack \
-  --input-path .datarobot/swarm/attack-input.json \
-  --response-path .datarobot/swarm/attack-output.json \
+  --input-path "$SWARM_DIR/attack-input.json" \
+  --response-path "$SWARM_DIR/attack-output.json" \
   --model <model> --server-url <opencode_server_url>
 ```
 
-Read `.datarobot/swarm/attack-output.json` and report: `"Generated X attack scenarios:"` followed by a list of scenario names.
+Read `$SWARM_DIR/attack-output.json` and report: `"Generated X attack scenarios:"` followed by a list of scenario names.
 
 Say: `"Generating behavior scenarios — these test how the agent handles ambiguous or edge-case user requests."`
 
 ```bash
 <python> <skill_scripts_dir>/gateway_worker.py \
   --role-prompt generate-behavior \
-  --input-path .datarobot/swarm/behavior-input.json \
-  --response-path .datarobot/swarm/behavior-output.json \
+  --input-path "$SWARM_DIR/behavior-input.json" \
+  --response-path "$SWARM_DIR/behavior-output.json" \
   --model <model> --server-url <opencode_server_url>
 ```
 
-Read `.datarobot/swarm/behavior-output.json` and report: `"Generated X behavior scenarios:"` followed by a list of scenario names.
+Read `$SWARM_DIR/behavior-output.json` and report: `"Generated X behavior scenarios:"` followed by a list of scenario names.
 
 Say: `"Generating persistence scenarios — these apply multi-turn pressure to see if the agent holds its position under pushback."`
 
 ```bash
 <python> <skill_scripts_dir>/gateway_worker.py \
   --role-prompt generate-persistence \
-  --input-path .datarobot/swarm/persistence-input.json \
-  --response-path .datarobot/swarm/persistence-output.json \
+  --input-path "$SWARM_DIR/persistence-input.json" \
+  --response-path "$SWARM_DIR/persistence-output.json" \
   --model <model> --server-url <opencode_server_url>
 ```
 
-Read `.datarobot/swarm/persistence-output.json` and report: `"Generated X persistence scenarios:"` followed by a list of scenario names.
+Read `$SWARM_DIR/persistence-output.json` and report: `"Generated X persistence scenarios:"` followed by a list of scenario names.
 
 Validate all outputs:
 
@@ -169,12 +177,6 @@ Write the authoritative criteria:
 ---
 
 ## Step 3 — Simulate
-
-If `.datarobot/swarm/results.json` exists, ask the user:
-> "Previous results exist — run again and archive them? (yes/no)"
-
-If yes, archive the directory with a timestamp (`mv .datarobot/swarm .datarobot/swarm-<timestamp>`)
-and continue. If no, stop and let the user review previous results.
 
 Find all implementation files in the working directory (`agent.py`, `myagent.py`, `tools.py`, `app.py`) and pass
 each as a separate `--implementation` flag. Tell the user before launching:
@@ -228,7 +230,6 @@ guard in the implementation.
 <python> <skill_scripts_dir>/native_convergence.py initialize agent_spec.md \
   --criteria evaluation_criteria.md \
   --config agent_config.yaml \
-  --results .datarobot/swarm/results.json \
   --actual-model "<model>"
 ```
 
@@ -344,6 +345,7 @@ When `advance` returns `complete`:
   --output eval_report.md
 
 kill <opencode_server_pid> 2>/dev/null || true
+rm -rf "$SWARM_DIR"
 ```
 
 After the script writes `eval_report.md`, append a **"## Changes Applied"** section to the file

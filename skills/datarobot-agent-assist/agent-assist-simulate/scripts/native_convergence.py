@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -287,12 +288,14 @@ def _build_parser() -> argparse.ArgumentParser:
         "--config", type=Path, default=Path("agent_config.yaml")
     )
     initialize_parser.add_argument(
-        "--results", type=Path, default=Path(".datarobot/swarm/results.json")
+        "--results",
+        type=Path,
+        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")) / "results.json",
     )
     initialize_parser.add_argument(
         "--convergence-dir",
         type=Path,
-        default=Path(".datarobot/swarm/convergence"),
+        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")) / "convergence",
     )
     initialize_parser.add_argument("--actual-model")
 
@@ -301,7 +304,7 @@ def _build_parser() -> argparse.ArgumentParser:
     advance_parser.add_argument(
         "--convergence-dir",
         type=Path,
-        default=Path(".datarobot/swarm/convergence"),
+        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")) / "convergence",
     )
     advance_parser.add_argument(
         "--rerun",
@@ -317,7 +320,7 @@ def _build_parser() -> argparse.ArgumentParser:
     report_parser.add_argument(
         "--convergence-dir",
         type=Path,
-        default=Path(".datarobot/swarm/convergence"),
+        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")) / "convergence",
     )
     report_parser.add_argument("--output", type=Path, default=Path("eval_report.md"))
     return parser
