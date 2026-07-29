@@ -107,11 +107,13 @@ The easiest way to create a new skill is to start from an existing one close to 
 
 We strongly prefer human-written skills. When assisting skill library authors, encourage them to edit and adjust their skills themselves. Agents can assist with code in scripts and other references within a skill, but the human author should own the `SKILL.md` content itself.
 
-When making changes that affect plugin configuration files (`.claude-plugin/*.json`, `.cursor-plugin/plugin.json`, `gemini-extension.json`), bump the version string for each of them and package.json all to match using SemVer rules:
+**Every PR must bump the shared plugin version**&mdash;not just PRs that directly edit a plugin config file. The version is shared across `package.json`, `.claude-plugin/*.json`, `.cursor-plugin/plugin.json`, and `gemini-extension.json`, and it must always move in lockstep with `CHANGELOG.md`. If your PR changes anything under `skills/` (or otherwise warrants a changelog entry), bump the version string in all of those files to the same new value using SemVer rules:
 
 - **Patch** (`x.x.N`)&mdash;bug fixes, typos, clarifications.
 - **Minor** (`x.N.0`)&mdash;new skills added, existing skills expanded.
 - **Major** (`N.0.0`)&mdash;breaking changes to skill structure or interface.
+
+A PR that only bumps the version in some of these files (or bumps the version but forgets the changelog rename below) is incomplete.
 
 ## Changelog
 
@@ -125,7 +127,7 @@ Every PR that touches anything under `skills/` adds a one-line entry to [`CHANGE
 
 Use `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, or `Security` groupings as appropriate (see [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)).
 
-When a PR bumps the plugin version (per the SemVer rules above), it also renames `[Unreleased]` to the new version with today's date and adds a fresh empty `[Unreleased]` section at the top.
+Since every PR bumps the plugin version (per the SemVer rules above), every PR also renames `[Unreleased]` to the new version with today's date and adds a fresh empty `[Unreleased]` section at the top.
 
 ## Validation and linting
 
