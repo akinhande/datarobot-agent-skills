@@ -6,8 +6,10 @@
 
 Invokes `dr opencode run` in an isolated temporary directory, parses the
 JSONL event stream, and writes the extracted JSON object to response_path.
-The adapter retries transient OpenCode database-lock failures. Authentication
-and response-contract retries are owned by the caller (SKILL.md).
+When --server-url is set, workers attach to a shared server instead of
+spawning their own process, eliminating SQLite DB lock contention at high
+parallelism. Authentication and response-contract retries are owned by the
+caller (SKILL.md).
 """
 
 import argparse
