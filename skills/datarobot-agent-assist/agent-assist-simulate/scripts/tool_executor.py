@@ -86,7 +86,13 @@ def main() -> None:
         sys.exit(1)
 
     try:
-        return_value = fn(**call_args)
+        if callable(fn):
+            return_value = fn(**call_args)
+        elif hasattr(fn, "invoke"):
+            return_value = fn.invoke(call_args)
+        else:
+            print(f"{tool_name} is not callable", file=sys.stderr)
+            sys.exit(1)
     except Exception as exc:
         print(f"{tool_name} raised {type(exc).__name__}: {exc}", file=sys.stderr)
         sys.exit(1)
