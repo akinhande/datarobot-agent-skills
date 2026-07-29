@@ -58,7 +58,7 @@ Install and test the skills after prompting the user for the trigger phrase you 
 
 ### Plugin version management
 
-Follow `CONTRIBUTING.md` for plugin versioning and changelog rules.
+Every PR must bump the shared plugin version — in `package.json`, `.claude-plugin/*.json`, `.cursor-plugin/plugin.json`, and `gemini-extension.json` — to the same new value using SemVer rules (patch/minor/major), and rename `CHANGELOG.md`'s `[Unreleased]` section to that version with today's date, adding a fresh empty `[Unreleased]` section. This applies to every PR, not just ones that directly edit a plugin config file. Follow `CONTRIBUTING.md` for the full versioning and changelog rules.
 
 
 ## SDK usage
