@@ -58,7 +58,10 @@ def main() -> None:
         sys.exit(1)
 
     if not isinstance(package, dict):
-        print(f"input package must be a JSON object, got {type(package).__name__}", file=sys.stderr)
+        print(
+            f"input package must be a JSON object, got {type(package).__name__}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     tool_name: str = package.get("tool_name", "")
@@ -67,7 +70,6 @@ def main() -> None:
     if not tool_name:
         print("input package missing tool_name", file=sys.stderr)
         sys.exit(1)
-
 
     if tool_name not in readonly_tools:
         print(
