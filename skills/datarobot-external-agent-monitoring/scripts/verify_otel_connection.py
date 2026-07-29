@@ -94,7 +94,10 @@ def verify_connection() -> dict:
             span.set_attribute("source", "datarobot-external-agent-monitoring")
         trace_provider.shutdown()
         results["traces"] = "sent"
-    except Exception as e:
+    # Broad catch is intentional: this is a connectivity diagnostic, and any
+    # exporter/transport failure must be reported per-signal rather than abort
+    # the remaining checks.
+    except Exception as e:  # noqa: BLE001
         results["traces"] = f"error: {e}"
         results["status"] = "partial"
 
@@ -114,7 +117,10 @@ def verify_connection() -> dict:
         test_logger.removeHandler(handler)
         logger_provider.shutdown()
         results["logs"] = "sent"
-    except Exception as e:
+    # Broad catch is intentional: this is a connectivity diagnostic, and any
+    # exporter/transport failure must be reported per-signal rather than abort
+    # the remaining checks.
+    except Exception as e:  # noqa: BLE001
         results["logs"] = f"error: {e}"
         results["status"] = "partial"
 
@@ -142,7 +148,10 @@ def verify_connection() -> dict:
         counter.add(1, {"source": "verification"})
         meter_provider.shutdown()
         results["metrics"] = "sent"
-    except Exception as e:
+    # Broad catch is intentional: this is a connectivity diagnostic, and any
+    # exporter/transport failure must be reported per-signal rather than abort
+    # the remaining checks.
+    except Exception as e:  # noqa: BLE001
         results["metrics"] = f"error: {e}"
         results["status"] = "partial"
 

@@ -68,6 +68,7 @@ correct across rebuilds/replacements (the workload ID never changes):
 
 ```python
 import os
+
 PREFIX = f"/api/v2/endpoints/workloads/{os.environ['WORKLOAD_ID']}"  # no trailing slash
 ```
 
@@ -96,9 +97,13 @@ ASGI apps already implement exactly this via `SCRIPT_NAME` / `root_path`:
 # and the framework prepends it to url_for()/redirect()/static URLs.
 def prefix_shim(app):
     def wrapped(environ, start_response):
-        environ["SCRIPT_NAME"] = PREFIX          # outbound URLs + redirects now carry PREFIX
-        return app(environ, start_response)      # route on PATH_INFO (already stripped) = matches
+        environ["SCRIPT_NAME"] = PREFIX  # outbound URLs + redirects now carry PREFIX
+        return app(
+            environ, start_response
+        )  # route on PATH_INFO (already stripped) = matches
+
     return wrapped
+
 
 application = prefix_shim(application)
 ```
@@ -122,12 +127,16 @@ before routing:
 # Idempotent: a request that already carries the prefix (e.g. an in-cluster
 # probe hitting the prefixed path) passes untouched.
 _orig = Application.find_handler
+
+
 def find_handler(self, request, **kw):
     p = request.path or "/"
     if p != PREFIX and not p.startswith(PREFIX + "/"):
         request.path = PREFIX + p
-        request.uri  = request.path + (f"?{request.query}" if request.query else "")
+        request.uri = request.path + (f"?{request.query}" if request.query else "")
     return _orig(self, request, **kw)
+
+
 Application.find_handler = find_handler
 ```
 
@@ -149,12 +158,21 @@ def fix_location(app):
     def wrapped(environ, start_response):
         def sr(status, headers, exc=None):
             headers = [
-                (k, PREFIX + v if k.lower() == "location"
-                       and v.startswith("/") and v != PREFIX and not v.startswith(PREFIX + "/") else v)
+                (
+                    k,
+                    PREFIX + v
+                    if k.lower() == "location"
+                    and v.startswith("/")
+                    and v != PREFIX
+                    and not v.startswith(PREFIX + "/")
+                    else v,
+                )
                 for k, v in headers
             ]
             return start_response(status, headers, exc)
+
         return app(environ, sr)
+
     return wrapped
 ```
 

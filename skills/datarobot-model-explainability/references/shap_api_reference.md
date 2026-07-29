@@ -173,7 +173,7 @@ Non-blocking variant.
             "text_explanations": [],
         },
         # ... top-N features
-    ]
+    ],
 }
 ```
 

@@ -17,6 +17,7 @@ Every framework integration follows the same four steps:
 from pathlib import Path
 import frontmatter
 
+
 def load_skill(skill_dir: str) -> dict:
     """Return name, description, and content from datarobot-*/SKILL.md."""
     skill_path = Path(skill_dir) / "SKILL.md"
@@ -34,6 +35,7 @@ def load_skill(skill_dir: str) -> dict:
 import json
 import os
 import subprocess
+
 
 def run_skill_script(script_path: str, *args: str) -> dict:
     """Run a helper script and parse JSON output."""
@@ -125,7 +127,7 @@ skill = load_skill("datarobot-predictions")
 instructions = f"""You are a DataRobot assistant.
 Follow this skill guidance:
 
-{skill['content']}
+{skill["content"]}
 """
 
 
@@ -163,7 +165,7 @@ datarobot_agent = Agent(
     backstory=f"""You are an expert at DataRobot workflows.
 Follow this skill guidance:
 
-{skill['content']}
+{skill["content"]}
 """,
     verbose=True,
 )
@@ -280,6 +282,7 @@ def build_agent(user_query: str) -> ReActAgent:
 from pathlib import Path
 import frontmatter
 
+
 def load_skill(skill_dir: str) -> dict:
     """Return {name, description, content} from datarobot-*/SKILL.md."""
     skill_path = Path(skill_dir) / "SKILL.md"
@@ -297,6 +300,7 @@ def load_skill(skill_dir: str) -> dict:
 import subprocess
 import json
 import os
+
 
 def run_skill_script(script_path: str, *args: str) -> dict:
     """Run a repo script and parse JSON output (if any)."""
@@ -334,6 +338,7 @@ from typing import TypedDict, List
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 import json
 
+
 def load_skill_catalog() -> list[dict]:
     """
     Build a lightweight catalog the router LLM can see.
@@ -343,10 +348,12 @@ def load_skill_catalog() -> list[dict]:
     # Return list of: {"name": "...", "description": "...", "dir": "datarobot-predictions"}
     raise NotImplementedError
 
+
 class State(TypedDict):
     messages: List[BaseMessage]
     skill_name: str
     skill_text: str
+
 
 def route_skill_with_llm(state: State, router_llm) -> State:
     """
@@ -387,11 +394,18 @@ Return ONLY JSON:
     state["skill_text"] = skill["content"]
     return state
 
+
 def tool_get_deployment_features(deployment_id: str) -> dict:
-    return run_skill_script("datarobot-predictions/scripts/get_deployment_features.py", deployment_id)
+    return run_skill_script(
+        "datarobot-predictions/scripts/get_deployment_features.py", deployment_id
+    )
+
 
 def tool_make_prediction(deployment_id: str, data_json: str) -> dict:
-    return run_skill_script("datarobot-predictions/scripts/make_prediction.py", deployment_id, data_json)
+    return run_skill_script(
+        "datarobot-predictions/scripts/make_prediction.py", deployment_id, data_json
+    )
+
 
 def planner_node(state: State) -> State:
     # Typical pattern: inject SKILL.md into system prompt.
@@ -438,14 +452,20 @@ instructions = f"""
 You are a DataRobot assistant.
 Follow this skill guidance:
 
-{skill['content']}
+{skill["content"]}
 """
+
 
 # Example tools (wrapping repo scripts)
 def get_deployment_features(deployment_id: str) -> dict:
-    return run_skill_script("datarobot-predictions/scripts/get_deployment_features.py", deployment_id)
+    return run_skill_script(
+        "datarobot-predictions/scripts/get_deployment_features.py", deployment_id
+    )
 
-def generate_template(deployment_id: str, n_rows: int = 10, out_path: str = "template.csv") -> dict:
+
+def generate_template(
+    deployment_id: str, n_rows: int = 10, out_path: str = "template.csv"
+) -> dict:
     # this script prints text; wrapper returns {"output": "..."} unless it prints JSON
     return run_skill_script(
         "datarobot-predictions/scripts/generate_prediction_data_template.py",
@@ -454,8 +474,12 @@ def generate_template(deployment_id: str, n_rows: int = 10, out_path: str = "tem
         out_path,
     )
 
+
 def score_one_row(deployment_id: str, data_json: str) -> dict:
-    return run_skill_script("datarobot-predictions/scripts/make_prediction.py", deployment_id, data_json)
+    return run_skill_script(
+        "datarobot-predictions/scripts/make_prediction.py", deployment_id, data_json
+    )
+
 
 # Then, register these functions as tools in your PydanticAI Agent
 # and set `instructions`/system prompt to include the SKILL.md content.
@@ -477,11 +501,18 @@ CrewAI is also version-sensitive; conceptually you:
 
 skill = load_skill("datarobot-predictions")
 
+
 def get_deployment_features(deployment_id: str) -> dict:
-    return run_skill_script("datarobot-predictions/scripts/get_deployment_features.py", deployment_id)
+    return run_skill_script(
+        "datarobot-predictions/scripts/get_deployment_features.py", deployment_id
+    )
+
 
 def make_prediction(deployment_id: str, data_json: str) -> dict:
-    return run_skill_script("datarobot-predictions/scripts/make_prediction.py", deployment_id, data_json)
+    return run_skill_script(
+        "datarobot-predictions/scripts/make_prediction.py", deployment_id, data_json
+    )
+
 
 # agent = Agent(
 #   role="DataRobot Prediction Assistant",

@@ -11,9 +11,10 @@ Usage:
 Modes: Quick, Comprehensive, Manual (default: Quick)
 """
 
-import sys
 import json
 import os
+import sys
+
 import datarobot as dr
 
 
@@ -61,9 +62,5 @@ if __name__ == "__main__":
     project_id = sys.argv[1]
     mode = sys.argv[2] if len(sys.argv) > 2 else "Quick"
 
-    try:
-        result = start_training(project_id, mode)
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    result = start_training(project_id, mode)
+    print(json.dumps(result, indent=2))

@@ -25,6 +25,7 @@ For ADK, the generated `dr_otel_config.py` must be modified from the generic pat
 # In dr_otel_config.py — ADK variant
 # ... (same imports as generic, plus:)
 
+
 def configure_otel():
     """Configure logs and metrics only. Traces use lazy injection."""
     headers = _build_dr_headers()
@@ -55,9 +56,12 @@ def configure_otel():
         preferred_temporality=preferred_temporality,
     )
     meter_provider = MeterProvider(
-        metric_readers=[PeriodicExportingMetricReader(
-            metric_exporter, export_interval_millis=5000,
-        )],
+        metric_readers=[
+            PeriodicExportingMetricReader(
+                metric_exporter,
+                export_interval_millis=5000,
+            )
+        ],
         resource=resource,
     )
     metrics.set_meter_provider(meter_provider)
@@ -101,23 +105,28 @@ from opentelemetry import metrics, trace
 _meter = metrics.get_meter("agent-name")  # Replace with actual agent name
 
 request_counter = _meter.create_counter(
-    "agent.requests", unit="1",
+    "agent.requests",
+    unit="1",
     description="Total requests processed by the agent",
 )
 request_duration = _meter.create_histogram(
-    "agent.request.duration_ms", unit="ms",
+    "agent.request.duration_ms",
+    unit="ms",
     description="End-to-end agent request duration",
 )
 llm_call_counter = _meter.create_counter(
-    "agent.llm.calls", unit="1",
+    "agent.llm.calls",
+    unit="1",
     description="Number of LLM API calls made",
 )
 llm_duration = _meter.create_histogram(
-    "agent.llm.duration_ms", unit="ms",
+    "agent.llm.duration_ms",
+    unit="ms",
     description="Individual LLM call duration",
 )
 tool_call_counter = _meter.create_counter(
-    "agent.tool.calls", unit="1",
+    "agent.tool.calls",
+    unit="1",
     description="Number of tool invocations",
 )
 
@@ -147,7 +156,9 @@ def _resolve_tracer_provider_for_processor():
         for _ in range(5):
             if cur is None:
                 break
-            if type(cur).__name__ != "ProxyTracerProvider" and hasattr(cur, "add_span_processor"):
+            if type(cur).__name__ != "ProxyTracerProvider" and hasattr(
+                cur, "add_span_processor"
+            ):
                 return cur
             cur = getattr(cur, "_real_tracer_provider", None)
     return None
@@ -163,7 +174,9 @@ def _ensure_trace_export():
 
         proc = dr_otel_config.dr_span_processor
         if proc is None:
-            logging.debug("DataRobot span processor not configured (missing OTEL endpoint)")
+            logging.debug(
+                "DataRobot span processor not configured (missing OTEL endpoint)"
+            )
             return
 
         target = _resolve_tracer_provider_for_processor()

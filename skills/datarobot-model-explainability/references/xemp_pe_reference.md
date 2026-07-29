@@ -108,11 +108,11 @@ Each entry in `prediction_explanations`:
 
 ```python
 {
-    "feature": "income",         # feature name
-    "featureValue": "85000",     # actual value of the feature
-    "strength": 0.18,            # XEMP contribution (positive = increases prediction)
-    "label": "income",           # display label
-    "qualitative_strength": "++" # qualitative indicator
+    "feature": "income",  # feature name
+    "featureValue": "85000",  # actual value of the feature
+    "strength": 0.18,  # XEMP contribution (positive = increases prediction)
+    "label": "income",  # display label
+    "qualitative_strength": "++",  # qualitative indicator
 }
 ```
 
@@ -136,7 +136,9 @@ pe_job = dr.PredictionExplanations.create(
     project_id=project_id,
     model_id=model_id,
     dataset_id=dataset.id,
-    mode=dr.models.ClassListMode(["class_a", "class_b"]),  # specify which classes to explain
+    mode=dr.models.ClassListMode(
+        ["class_a", "class_b"]
+    ),  # specify which classes to explain
 )
 
 # Check if multiclass

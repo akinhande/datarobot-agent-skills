@@ -12,9 +12,10 @@ Supports CSV, Parquet, and other formats. Optionally links the dataset to
 an existing Use Case so it isn't orphaned in the DataRobot UI.
 """
 
-import sys
 import json
 import os
+import sys
+
 import datarobot as dr
 
 
@@ -70,9 +71,5 @@ if __name__ == "__main__":
     dataset_name = sys.argv[2]
     use_case_id = sys.argv[3] if len(sys.argv) > 3 else None
 
-    try:
-        result = upload_dataset(file_path, dataset_name, use_case_id)
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    result = upload_dataset(file_path, dataset_name, use_case_id)
+    print(json.dumps(result, indent=2))

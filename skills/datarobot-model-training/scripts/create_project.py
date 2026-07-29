@@ -12,9 +12,10 @@ Creates a project, optionally sets the target, and optionally links the
 project to an existing Use Case so it isn't orphaned in the DataRobot UI.
 """
 
-import sys
 import json
 import os
+import sys
+
 import datarobot as dr
 
 
@@ -63,7 +64,11 @@ def create_project(
             project.set_target(target=target_column, mode=dr.AUTOPILOT_MODE.QUICK)
             result["target"] = target_column
             result["target_set"] = True
-        except Exception as e:
+        except (
+            dr.errors.AppPlatformError,
+            dr.errors.AsyncTimeoutError,
+            dr.errors.AsyncProcessUnsuccessfulError,
+        ) as e:
             result["target_set_error"] = str(e)
 
     return result
@@ -83,9 +88,5 @@ if __name__ == "__main__":
     target_column = sys.argv[3] if len(sys.argv) > 3 else None
     use_case_id = sys.argv[4] if len(sys.argv) > 4 else None
 
-    try:
-        result = create_project(dataset_id, project_name, target_column, use_case_id)
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    result = create_project(dataset_id, project_name, target_column, use_case_id)
+    print(json.dumps(result, indent=2))

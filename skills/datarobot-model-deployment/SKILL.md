@@ -133,19 +133,18 @@ import os
 
 # Initialize client
 client = dr.Client(
-    token=os.getenv("DATAROBOT_API_TOKEN"),
-    endpoint=os.getenv("DATAROBOT_ENDPOINT")
+    token=os.getenv("DATAROBOT_API_TOKEN"), endpoint=os.getenv("DATAROBOT_ENDPOINT")
 )
 
 # Get best model from project
 models = dr.Model.list("abc123")
-best_model = max(models, key=lambda m: m.metrics.get('AUC', 0))
+best_model = max(models, key=lambda m: m.metrics.get("AUC", 0))
 
 # Create deployment
 deployment = dr.Deployment.create_from_learning_model(
     model_id=best_model.id,
     label="Sales Prediction v1",
-    description="Production deployment for sales forecasting"
+    description="Production deployment for sales forecasting",
 )
 
 print(f"Deployment created: {deployment.id}")
@@ -157,8 +156,7 @@ import datarobot as dr
 
 # Create deployment with primary model
 deployment = dr.Deployment.create_from_learning_model(
-    model_id=primary_model.id,
-    label="Sales Prediction v2"
+    model_id=primary_model.id, label="Sales Prediction v2"
 )
 
 # List challengers (if challenger models are configured/enabled)
@@ -212,7 +210,7 @@ import os
 
 client = dr.Client(
     token=os.getenv("DATAROBOT_API_TOKEN"),
-    endpoint=os.getenv("DATAROBOT_ENDPOINT", "https://app.datarobot.com")
+    endpoint=os.getenv("DATAROBOT_ENDPOINT", "https://app.datarobot.com"),
 )
 ```
 

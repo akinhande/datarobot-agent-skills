@@ -5,9 +5,9 @@
 """
 DataRobot Dress Rehearsal engine (datarobot-agent-assist skill)
 
-Init:  python3 rehearsal.py --init [--spec agent_spec.md]
+Init:  python3 rehearsal.py --init [--spec agent_spec.md] --target-dir <directory>
          stdout: session=<session_dir>  output=<output_file>
-Turn:  python3 rehearsal.py --session <session_dir> "user message"
+Turn:  python3 rehearsal.py --session <session_dir> [--target-dir <directory>] "user message"
          stdout: output=<output_file>
 
 From repository root, use:
@@ -17,21 +17,21 @@ From repository root, use:
 import argparse
 import concurrent.futures
 import contextlib
+import functools
 import json
 import os
 import sys
 import tempfile
 import threading
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, cast
 
-from env_utils import ensure_env_file, read_env_variable
+from env_utils import get_datarobot_credentials
 from list_llm_models import fetch_llm_models
-
 
 # Model used for spec extraction and tool simulation.
 # The agent's own model (from the spec) is used for the main turn loop.
@@ -115,43 +115,9 @@ def print_model_chosen(requested: str, chosen: str) -> None:
     print()
 
 
-def get_credentials() -> tuple[str, str]:
-    """Get DataRobot credentials from .env file or environment variables.
-
-    If .env file doesn't exist, attempts to run 'dr dotenv setup'.
-    Falls back to environment variables if .env is not available.
-
-    Returns:
-        tuple: (api_token, endpoint)
-    """
-    env_file = Path(".env")
-
-    # Ensure .env file exists (run dr dotenv setup if needed)
-    ensure_env_file(env_file)
-
-    endpoint = None
-    api_token = None
-
-    # Try .env file first
-    if env_file.exists():
-        try:
-            endpoint = read_env_variable(env_file, "DATAROBOT_ENDPOINT")
-        except ValueError:
-            pass  # Variable not in .env, will try environment
-
-        try:
-            api_token = read_env_variable(env_file, "DATAROBOT_API_TOKEN")
-        except ValueError:
-            pass  # Variable not in .env, will try environment
-
-    # Fall back to environment variables if not found in .env
-    if not endpoint:
-        endpoint = os.environ.get(
-            "DATAROBOT_ENDPOINT", "https://app.datarobot.com/api/v2"
-        )
-
-    if not api_token:
-        api_token = os.environ.get("DATAROBOT_API_TOKEN")
+def get_credentials(target_dir: Path) -> tuple[str, str]:
+    """Get DataRobot credentials from target_dir/.env or environment variables."""
+    endpoint, api_token = get_datarobot_credentials(target_dir)
 
     if not api_token:
         print(
@@ -160,7 +126,10 @@ def get_credentials() -> tuple[str, str]:
         )
         sys.exit(1)
 
-    return (api_token, endpoint)
+    if not endpoint:
+        endpoint = "https://app.datarobot.com/api/v2"
+
+    return api_token, endpoint
 
 
 def strip_model_prefix(model: str) -> str:
@@ -550,12 +519,12 @@ def load_session(session_dir: str) -> tuple[dict[str, Any], list[dict[str, Any]]
 # ── commands ──────────────────────────────────────────────────────────────────
 
 
-def cmd_init(spec_path: str, session_dir: str) -> None:
+def cmd_init(spec_path: str, session_dir: str, target_dir: Path) -> None:
     if not os.path.exists(spec_path):
         print(f"Error: spec file not found: {spec_path}", file=sys.stderr)
         sys.exit(1)
 
-    token, endpoint = get_credentials()
+    token, endpoint = get_credentials(target_dir)
     catalog = ModelCatalog(token, endpoint)
     simulation_model, sim_substituted = catalog.pick_available(SIMULATION_MODEL)
     if sim_substituted:
@@ -612,6 +581,7 @@ def cmd_init(spec_path: str, session_dir: str) -> None:
                 "tool_definitions": build_tool_definitions(tools),
                 "spec_tools": tools,
                 "examples": examples,
+                "target_dir": str(target_dir.resolve()),
             },
             f,
         )
@@ -686,10 +656,12 @@ def _save_config(session_dir: str, config: dict[str, Any]) -> None:
     os.replace(tmp, path)
 
 
-def cmd_turn(session_dir: str, message: str) -> None:
-    token, endpoint = get_credentials()
-    catalog = LazyModelCatalog(token, endpoint)
+def cmd_turn(session_dir: str, message: str, target_dir: Path | None = None) -> None:
     config, messages, state_file = load_session(session_dir)
+    resolved_target_dir = target_dir or Path(config.get("target_dir", "."))
+    token, endpoint = get_credentials(resolved_target_dir)
+
+    catalog = LazyModelCatalog(token, endpoint)
 
     model = config["model"]
     simulation_model = config.get("simulation_model", SIMULATION_MODEL)
@@ -724,23 +696,18 @@ def cmd_turn(session_dir: str, message: str) -> None:
 
         if finish_reason == "tool_calls" or msg.get("tool_calls"):
             messages.append(msg)
-            lock = threading.Lock()
+            run_tool = functools.partial(
+                run_tool_call,
+                token=token,
+                endpoint=endpoint,
+                simulation_model=simulation_model,
+                spec_tools=spec_tools,
+                catalog=catalog,
+                stats=stats,
+                lock=threading.Lock(),
+            )
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                results = list(
-                    executor.map(
-                        lambda tc: run_tool_call(
-                            tc,
-                            token,
-                            endpoint,
-                            simulation_model,
-                            spec_tools,
-                            catalog,
-                            stats,
-                            lock,
-                        ),
-                        msg["tool_calls"],
-                    )
-                )
+                results = list(executor.map(run_tool, msg["tool_calls"]))
             tool_messages = [r[0] for r in results]
             simulation_model = results[-1][1]
             if simulation_model != config.get("simulation_model"):
@@ -774,14 +741,33 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="DataRobot Dress Rehearsal")
     parser.add_argument("--init", action="store_true")
     parser.add_argument("--spec", default="agent_spec.md")
+    parser.add_argument(
+        "--target-dir",
+        default=None,
+        help="Project directory for .env lookup (required for --init; turns default to session from --init)",
+    )
     parser.add_argument("--session", metavar="DIR")
     parser.add_argument("message", nargs="?")
     args = parser.parse_args()
 
+    target_dir = Path(args.target_dir).resolve() if args.target_dir else None
+
     if args.init:
+        if not target_dir:
+            print(
+                "Error: --target-dir is required for --init",
+                file=sys.stderr,
+            )
+            return 1
+        if not target_dir.is_dir():
+            print(
+                f"Error: target directory does not exist: {target_dir}",
+                file=sys.stderr,
+            )
+            return 1
         session_dir = tempfile.mkdtemp(prefix="dr_rehearsal_")
         with capture_output(session_dir) as output_path:
-            cmd_init(args.spec, session_dir)
+            cmd_init(args.spec, session_dir, target_dir)
         print(f"session={session_dir}")
         print(f"output={output_path}")
 
@@ -790,7 +776,7 @@ def main() -> int:
             print("Error: --session DIR is required", file=sys.stderr)
             return 1
         with capture_output(args.session) as output_path:
-            cmd_turn(args.session, args.message)
+            cmd_turn(args.session, args.message, target_dir)
         print(f"output={output_path}")
 
     else:

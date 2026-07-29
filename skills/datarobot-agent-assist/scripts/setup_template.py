@@ -17,14 +17,13 @@ The script generates cryptographically secure random secrets for session
 management and Pulumi configuration encryption.
 """
 
-import os
-import sys
 import argparse
-import subprocess
-import secrets
 import base64
+import os
+import secrets
+import subprocess
+import sys
 from pathlib import Path
-from typing import Tuple
 
 from env_utils import read_env_variable
 
@@ -44,7 +43,7 @@ def generate_random_secret(length: int = 32) -> str:
     return encoded[:length]
 
 
-def create_env_file(target_dir: Path, llm_default_model: str) -> Tuple[bool, str]:
+def create_env_file(target_dir: Path, llm_default_model: str) -> tuple[bool, str]:
     """
     Create .env file with LLM_DEFAULT_MODEL configuration.
 
@@ -69,15 +68,15 @@ def create_env_file(target_dir: Path, llm_default_model: str) -> Tuple[bool, str
         print(f'✓ Created .env file with LLM_DEFAULT_MODEL="{llm_default_model}"')
         return True, f"Created {env_file}"
 
-    except Exception as e:
-        error_msg = f"Failed to create .env file: {str(e)}"
+    except OSError as e:
+        error_msg = f"Failed to create .env file: {e!s}"
         print(f"Error: {error_msg}")
         return False, error_msg
 
 
 def initialize_pulumi(
     target_dir: Path, pulumi_passphrase: str = "", timeout: int = 300
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     """
     Initialize Pulumi stack with a passphrase from .env or generated.
 
@@ -155,13 +154,13 @@ def initialize_pulumi(
         error_msg = f"Pulumi initialization timed out after {timeout} seconds"
         print(f"Error: {error_msg}")
         return False, error_msg
-    except Exception as e:
-        error_msg = f"Failed to initialize Pulumi: {str(e)}"
+    except OSError as e:
+        error_msg = f"Failed to initialize Pulumi: {e!s}"
         print(f"Error: {error_msg}")
         return False, error_msg
 
 
-def run_command(command: str, target_dir: Path, timeout: int = 300) -> Tuple[bool, str]:
+def run_command(command: str, target_dir: Path, timeout: int = 300) -> tuple[bool, str]:
     """
     Run a shell command and capture its output.
 
@@ -214,8 +213,8 @@ def run_command(command: str, target_dir: Path, timeout: int = 300) -> Tuple[boo
         error_msg = f"Command timed out after {timeout} seconds"
         print(f"Error: {error_msg}")
         return False, error_msg
-    except Exception as e:
-        error_msg = f"Failed to execute command: {str(e)}"
+    except OSError as e:
+        error_msg = f"Failed to execute command: {e!s}"
         print(f"Error: {error_msg}")
         return False, error_msg
 
@@ -244,12 +243,12 @@ def setup_and_run(llm_default_model: str, target_dir: Path) -> int:
         return 1
 
     # Step 1: Create .env file
-    success, message = create_env_file(target_dir, llm_default_model)
+    success, _ = create_env_file(target_dir, llm_default_model)
     if not success:
         return 1
 
     # Step 2: Run dr dotenv setup
-    success, output = run_command("dr dotenv setup --yes", target_dir)
+    success, _ = run_command("dr dotenv setup --yes --output .", target_dir)
     if not success:
         # TODO: DR CLI non-interactive mode MUST be supported for this to work
         print("\n⚠ Command 'dr dotenv setup --yes' failed")
@@ -257,14 +256,14 @@ def setup_and_run(llm_default_model: str, target_dir: Path) -> int:
         return 1
 
     # Step 3: Initialize Pulumi stack
-    success, output = initialize_pulumi(target_dir)
+    success, _ = initialize_pulumi(target_dir)
     if not success:
         print("\n⚠ Pulumi initialization failed")
         print("See output above for details")
         return 1
 
     # Step 4: Run task start-non-interactive
-    success, output = run_command("task start-non-interactive", target_dir)
+    success, _ = run_command("task start-non-interactive", target_dir)
     if not success:
         print("\n⚠ Command 'task start-non-interactive' failed")
         print("See output above for details")
@@ -289,13 +288,16 @@ def main() -> int:
 
     parser.add_argument(
         "--target-dir",
-        default=".",
-        help="Target directory for operations (default: current directory)",
+        required=True,
+        help="Target directory for operations (required — use the session <target_dir>)",
     )
 
     args = parser.parse_args()
 
     target_dir = Path(args.target_dir).resolve()
+    if not target_dir.is_dir():
+        print(f"Error: target directory does not exist: {target_dir}", file=sys.stderr)
+        return 1
 
     return setup_and_run(args.llm_model, target_dir)
 
