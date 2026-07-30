@@ -41,13 +41,7 @@ dr auth check
 
 If any check fails, surface the error and stop.
 
-**Swarm directory:** Create a temporary directory for all scratch files generated during this session:
-
-```bash
-export SWARM_DIR=$(python3 -c "import tempfile; print(tempfile.mkdtemp(prefix='dr_swarm_'))")
-```
-
-All intermediate files (scenario inputs/outputs, run results, convergence state) are written here and deleted at the end of Step 5.
+**Swarm directory:** All intermediate files (scenario inputs/outputs, run results, convergence state) are written to `.datarobot/swarm/` under the project root and deleted at the end of Step 5.
 
 ---
 
@@ -345,7 +339,7 @@ When `advance` returns `complete`:
   --output eval_report.md
 
 kill <opencode_server_pid> 2>/dev/null || true
-rm -rf "$SWARM_DIR"
+rm -rf .datarobot/swarm/
 ```
 
 After the script writes `eval_report.md`, append a **"## Changes Applied"** section to the file
