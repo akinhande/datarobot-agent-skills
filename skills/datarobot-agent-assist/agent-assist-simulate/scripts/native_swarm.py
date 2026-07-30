@@ -19,10 +19,10 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from artifacts import (
-    _one_line,
-    _resolve_project_file,
-    _resolve_under_root,
-    _scenario_id,
+    one_line,
+    resolve_project_file,
+    resolve_under_root,
+    scenario_id,
     load_criteria,
     load_json,
     load_native_config,
@@ -258,6 +258,8 @@ def _drive_scenario(
             return str(transition.get("status", "error"))
 
         current_role = str(next_role)
+        if "input_path" not in transition or "response_path" not in transition:
+            raise ValueError(f"submit response missing input_path/response_path: {transition}")
         current_input = Path(str(transition["input_path"]))
         current_response = Path(str(transition["response_path"]))
 
@@ -358,7 +360,7 @@ def run(
 
     spec = load_spec(spec_path.resolve())
     config, _ = load_native_config(
-        _resolve_project_file(spec_path.resolve().parent, config_path, "config")
+        resolve_project_file(spec_path.resolve().parent, config_path, "config")
     )
     e2e_tools: set[str] = set()
     if config.execution.mode == "selective_e2e" and tools_path is not None:
@@ -392,7 +394,7 @@ def run(
             elapsed = time.monotonic() - t0
             try:
                 status = future.result()
-            except Exception as exc:
+            except (OSError, ValidationError, ValueError) as exc:
                 status = "error"
                 print(
                     f"scenario {task.scenario_name}: unexpected error: {exc}",
@@ -437,13 +439,13 @@ def prepare(
     if not resolved_spec.is_file():
         raise ValueError(f"agent spec does not exist: {resolved_spec}")
     project_root = resolved_spec.parent
-    resolved_criteria = _resolve_project_file(
+    resolved_criteria = resolve_project_file(
         project_root, criteria_path, "evaluation criteria"
     )
-    resolved_config = _resolve_project_file(
+    resolved_config = resolve_project_file(
         project_root, config_path, "simulation config"
     )
-    resolved_runs_dir = _resolve_under_root(
+    resolved_runs_dir = resolve_under_root(
         project_root, runs_dir, "swarm runs directory"
     )
 
@@ -459,18 +461,18 @@ def prepare(
     _validate_grounding_context(project_root, config)
 
     for scenario in scenarios:
-        run_dir = resolved_runs_dir / _scenario_id(scenario)
+        run_dir = resolved_runs_dir / scenario_id(scenario)
         if (run_dir / STATE_FILENAME).exists() or (run_dir / RESULT_FILENAME).exists():
             raise ValueError(f"run already initialized: {run_dir}")
 
     tasks: list[SwarmTask] = []
     for scenario in scenarios:
-        scenario_id = _scenario_id(scenario)
-        run_dir = resolved_runs_dir / scenario_id
+        sid = scenario_id(scenario)
+        run_dir = resolved_runs_dir / sid
         transition = initialize(
             resolved_spec,
             resolved_criteria,
-            scenario_id,
+            sid,
             run_dir,
             config.evaluation.mode,
             list(config.evaluation.fail_on),
@@ -509,28 +511,28 @@ def aggregate(
     if not resolved_spec.is_file():
         raise ValueError(f"agent spec does not exist: {resolved_spec}")
     project_root = resolved_spec.parent
-    resolved_criteria = _resolve_project_file(
+    resolved_criteria = resolve_project_file(
         project_root, criteria_path, "evaluation criteria"
     )
-    resolved_config = _resolve_project_file(
+    resolved_config = resolve_project_file(
         project_root, config_path, "simulation config"
     )
-    resolved_runs_dir = _resolve_under_root(
+    resolved_runs_dir = resolve_under_root(
         project_root, runs_dir, "swarm runs directory"
     )
-    resolved_output = _resolve_under_root(project_root, output_path, "swarm results")
+    resolved_output = resolve_under_root(project_root, output_path, "swarm results")
 
     config, _ = load_native_config(resolved_config)
     scenarios = load_criteria(resolved_criteria)
     _validate_confirmed_scenarios(scenarios)
-    expected_ids = [_scenario_id(scenario) for scenario in scenarios]
+    expected_ids = [scenario_id(scenario) for scenario in scenarios]
     _reject_extra_runs(resolved_runs_dir, set(expected_ids))
 
     results: list[ScenarioResult] = []
     failures: list[str] = []
     for scenario in scenarios:
-        scenario_id = _scenario_id(scenario)
-        run_dir = resolved_runs_dir / scenario_id
+        sid = scenario_id(scenario)
+        run_dir = resolved_runs_dir / sid
         result_path = run_dir / RESULT_FILENAME
         state_path = run_dir / STATE_FILENAME
         if result_path.is_file():
@@ -542,22 +544,22 @@ def aggregate(
                     raise ValueError("result scenario differs from confirmed criteria")
                 results.append(result)
             except (OSError, ValueError, ValidationError) as exc:
-                failures.append(f"{scenario_id}: invalid result: {_one_line(exc)}")
+                failures.append(f"{sid}: invalid result: {one_line(exc)}")
         elif state_path.is_file():
             try:
                 state = NativeRunState.model_validate(load_json(state_path))
                 if state.status == "running":
                     failures.append(
-                        f"{scenario_id}: still running; expected role {state.next_role}"
+                        f"{sid}: still running; expected role {state.next_role}"
                     )
                 else:
                     failures.append(
-                        f"{scenario_id}: terminal {state.status} state has no result"
+                        f"{sid}: terminal {state.status} state has no result"
                     )
             except (OSError, ValueError, ValidationError) as exc:
-                failures.append(f"{scenario_id}: invalid run state: {_one_line(exc)}")
+                failures.append(f"{sid}: invalid run state: {one_line(exc)}")
         else:
-            failures.append(f"{scenario_id}: never initialized")
+            failures.append(f"{sid}: never initialized")
 
     if failures:
         raise ValueError("; ".join(failures))
@@ -588,7 +590,7 @@ def _resolve_implementation_files(
             "agent.py, myagent.py, tools.py, or app.py"
         )
     return [
-        _resolve_project_file(project_root, path, "implementation file")
+        resolve_project_file(project_root, path, "implementation file")
         for path in candidates
     ]
 
@@ -613,11 +615,11 @@ def _implementation_warnings(
 def _validate_grounding_context(project_root: Path, config: SimulationConfig) -> None:
     context_path = config.grounding.context_path
     if context_path is not None:
-        _resolve_project_file(project_root, Path(context_path), "grounding context")
+        resolve_project_file(project_root, Path(context_path), "grounding context")
 
 
 def _validate_confirmed_scenarios(scenarios: list[Scenario]) -> None:
-    ids = [_scenario_id(scenario) for scenario in scenarios]
+    ids = [scenario_id(scenario) for scenario in scenarios]
     duplicates = sorted(
         {scenario_id for scenario_id in ids if ids.count(scenario_id) > 1}
     )
@@ -736,7 +738,7 @@ def main(argv: list[str] | None = None) -> int:
                 "breached": statuses.count("breach") + statuses.count("exhausted"),
                 "errored": statuses.count("error"),
                 "output_path": str(
-                    _resolve_under_root(
+                    resolve_under_root(
                         args.spec.resolve().parent, args.output, "swarm results"
                     )
                 ),
@@ -763,7 +765,7 @@ def main(argv: list[str] | None = None) -> int:
                 "breached": statuses.count("breach") + statuses.count("exhausted"),
                 "errored": statuses.count("error"),
                 "output_path": str(
-                    _resolve_under_root(
+                    resolve_under_root(
                         args.spec.resolve().parent, args.output, "swarm results"
                     )
                 ),
@@ -771,7 +773,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(payload, ensure_ascii=False))
         return 0
     except (OSError, ValueError, ValidationError) as exc:
-        print(f"{args.command} failed: {_one_line(exc)}", file=sys.stderr)
+        print(f"{args.command} failed: {one_line(exc)}", file=sys.stderr)
         return 1
 
 

@@ -14,7 +14,7 @@ from typing import Literal
 
 from pydantic import Field, TypeAdapter, ValidationError
 
-from artifacts import _one_line, load_criteria, load_json, load_spec, write_json
+from artifacts import one_line, load_criteria, load_json, load_spec, write_json
 from swarm_contracts import (
     AgentSpec,
     AssistantResponseAction,
@@ -137,7 +137,7 @@ def submit(run_dir: Path, response_path: Path) -> dict[str, object]:
     except NativeExecutionValidationError:
         raise
     except (OSError, ValueError, ValidationError, TypeError) as exc:
-        raise NativeExecutionValidationError(role, _one_line(exc)) from exc
+        raise NativeExecutionValidationError(role, one_line(exc)) from exc
 
     if state.result is not None:
         return _persist_terminal(state, run_dir)
@@ -439,7 +439,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
     except (OSError, ValueError, ValidationError) as exc:
-        print(f"{args.command} failed: {_one_line(exc)}", file=sys.stderr)
+        print(f"{args.command} failed: {one_line(exc)}", file=sys.stderr)
         return 1
 
 

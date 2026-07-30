@@ -15,9 +15,9 @@ from typing import Literal
 from pydantic import ValidationError
 
 from artifacts import (
-    _one_line,
-    _resolve_project_file,
-    _resolve_under_root,
+    one_line,
+    resolve_project_file,
+    resolve_under_root,
     load_json,
     load_native_config,
     load_spec,
@@ -68,9 +68,9 @@ def prepare(
     """Write minimal input packages for the three scenario generators."""
     resolved_spec = spec_path.resolve()
     project_root = resolved_spec.parent
-    resolved_work_dir = _resolve_under_root(project_root, work_dir, "work directory")
+    resolved_work_dir = resolve_under_root(project_root, work_dir, "work directory")
     resolved_context = (
-        _resolve_project_file(project_root, grounding_context_path, "grounding context")
+        resolve_project_file(project_root, grounding_context_path, "grounding context")
         if grounding_context_path
         else None
     )
@@ -105,12 +105,12 @@ def configure(
 ) -> Path:
     """Persist the public native configuration collected by the harness."""
     project_root = spec_path.resolve().parent
-    resolved_output = _resolve_under_root(
+    resolved_output = resolve_under_root(
         project_root, output_path, "simulation config"
     )
     context_path = (
         str(
-            _resolve_project_file(
+            resolve_project_file(
                 project_root, grounding_context_path, "grounding context"
             ).relative_to(project_root)
         )
@@ -138,7 +138,7 @@ def prepare_from_config(
 ) -> dict[Role, Path]:
     """Load native configuration and prepare the three generator packages."""
     project_root = spec_path.resolve().parent
-    resolved_config = _resolve_project_file(
+    resolved_config = resolve_project_file(
         project_root, config_path, "simulation config"
     )
     config, warnings = load_native_config(resolved_config)
@@ -185,7 +185,7 @@ def finalize(work_dir: Path) -> ScenarioProposalList:
             data = load_json(work_dir / f"{role}-output.json")
             combined.extend(validate_role_output(role, data))
         except (OSError, ValueError, ValidationError) as exc:
-            failures[role] = _one_line(exc)
+            failures[role] = one_line(exc)
 
     if failures:
         raise NativeScenarioValidationError(failures)
@@ -321,7 +321,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"role:{role} validation failed: {reason}", file=sys.stderr)
         return 1
     except (OSError, ValueError, ValidationError) as exc:
-        print(f"{args.command} failed: {_one_line(exc)}", file=sys.stderr)
+        print(f"{args.command} failed: {one_line(exc)}", file=sys.stderr)
         return 1
 
 

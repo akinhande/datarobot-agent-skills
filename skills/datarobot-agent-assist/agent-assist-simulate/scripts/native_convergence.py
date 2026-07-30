@@ -17,10 +17,10 @@ from typing import Literal
 from pydantic import ValidationError
 
 from artifacts import (
-    _one_line,
-    _resolve_project_file,
-    _resolve_under_root,
-    _scenario_id,
+    one_line,
+    resolve_project_file,
+    resolve_under_root,
+    scenario_id,
     load_criteria,
     load_json,
     load_native_config,
@@ -71,16 +71,16 @@ def initialize(
     if not resolved_spec.is_file():
         raise ValueError(f"agent spec does not exist: {resolved_spec}")
     project_root = resolved_spec.parent
-    resolved_criteria = _resolve_project_file(
+    resolved_criteria = resolve_project_file(
         project_root, criteria_path, "evaluation criteria"
     )
-    resolved_config = _resolve_project_file(
+    resolved_config = resolve_project_file(
         project_root, config_path, "simulation config"
     )
-    resolved_results = _resolve_project_file(
+    resolved_results = resolve_project_file(
         project_root, results_path, "swarm results"
     )
-    resolved_convergence_dir = _resolve_under_root(
+    resolved_convergence_dir = resolve_under_root(
         project_root, convergence_dir, "convergence directory"
     )
     state_path = resolved_convergence_dir / STATE_FILENAME
@@ -106,7 +106,7 @@ def initialize(
             for result in latest_results
         ]
 
-    iteration_counts = {_scenario_id(result.scenario): 0 for result in latest_results}
+    iteration_counts = {scenario_id(result.scenario): 0 for result in latest_results}
 
     has_breaches = any(r.status == "breach" for r in latest_results)
     state = NativeConvergenceState(
@@ -137,7 +137,7 @@ def advance(
     if not resolved_spec.is_file():
         raise ValueError(f"agent spec does not exist: {resolved_spec}")
     project_root = resolved_spec.parent
-    resolved_convergence_dir = _resolve_under_root(
+    resolved_convergence_dir = resolve_under_root(
         project_root, convergence_dir, "convergence directory"
     )
     state_path = resolved_convergence_dir / STATE_FILENAME
@@ -147,32 +147,32 @@ def advance(
         raise ValueError("convergence is already complete")
 
     current_by_id = {
-        _scenario_id(result.scenario): result for result in state.latest_results
+        scenario_id(result.scenario): result for result in state.latest_results
     }
     max_iterations = state.config.convergence.max_iterations
 
     rerun_results: dict[str, ScenarioResult] = {}
-    for scenario_id, run_dir in rerun_pairs:
-        if scenario_id not in current_by_id:
-            raise ValueError(f"unknown scenario_id in rerun: {scenario_id}")
+    for sid, run_dir in rerun_pairs:
+        if sid not in current_by_id:
+            raise ValueError(f"unknown scenario_id in rerun: {sid}")
         result_path = run_dir / RESULT_FILENAME
         run_state_path = run_dir / RUN_STATE_FILENAME
         if result_path.is_file():
             result = ScenarioResult.model_validate(load_json(result_path))
-            rerun_results[scenario_id] = result
+            rerun_results[sid] = result
         elif run_state_path.is_file():
             run_state = NativeRunState.model_validate(load_json(run_state_path))
             if run_state.status == "running":
                 raise ValueError(
-                    f"{scenario_id}: rerun still running; expected role {run_state.next_role}"
+                    f"{sid}: rerun still running; expected role {run_state.next_role}"
                 )
-            raise ValueError(f"{scenario_id}: terminal rerun state has no result")
+            raise ValueError(f"{sid}: terminal rerun state has no result")
         else:
-            raise ValueError(f"{scenario_id}: rerun was never initialized")
+            raise ValueError(f"{sid}: rerun was never initialized")
 
     latest: list[ScenarioResult] = []
     for result in state.latest_results:
-        sid = _scenario_id(result.scenario)
+        sid = scenario_id(result.scenario)
         if sid in rerun_results:
             replacement = rerun_results[sid]
             state.iteration_counts[sid] = state.iteration_counts.get(sid, 0) + 1
@@ -205,10 +205,10 @@ def report(
     if not resolved_spec.is_file():
         raise ValueError(f"agent spec does not exist: {resolved_spec}")
     project_root = resolved_spec.parent
-    resolved_convergence_dir = _resolve_under_root(
+    resolved_convergence_dir = resolve_under_root(
         project_root, convergence_dir, "convergence directory"
     )
-    resolved_output = _resolve_under_root(
+    resolved_output = resolve_under_root(
         project_root, output_path, "evaluation report"
     )
     state = NativeConvergenceState.model_validate(
@@ -229,7 +229,7 @@ def _status_payload(
     exhausted = []
     passed = []
     for result in state.latest_results:
-        sid = _scenario_id(result.scenario)
+        sid = scenario_id(result.scenario)
         iteration = state.iteration_counts.get(sid, 0)
         base: dict[str, object] = {
             "scenario_id": sid,
@@ -363,7 +363,7 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(result, ensure_ascii=False))
         return 0
     except (OSError, ValueError, ValidationError) as exc:
-        print(f"{args.command} failed: {_one_line(exc)}", file=sys.stderr)
+        print(f"{args.command} failed: {one_line(exc)}", file=sys.stderr)
         return 1
 
 

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from pydantic import ValidationError
 
 from swarm_contracts import AgentSpec, Scenario, SimulationConfig
 
@@ -90,7 +91,7 @@ def load_criteria(path: Path) -> list[Scenario]:
 
     try:
         return [Scenario.model_validate(scenario) for scenario in data]
-    except Exception as exc:
+    except ValidationError as exc:
         raise CriteriaError(f"{path} contains an invalid scenario: {exc}") from exc
 
 
@@ -133,7 +134,7 @@ def load_native_config(path: Path) -> tuple[SimulationConfig, list[str]]:
         )
     except ConfigError:
         raise
-    except Exception as exc:
+    except ValidationError as exc:
         raise ConfigError(f"{path} contains invalid configuration: {exc}") from exc
 
     warnings = ["Migrated legacy Gateway configuration in memory for native execution."]
@@ -158,17 +159,17 @@ def save_native_config(config: SimulationConfig, path: Path) -> None:
     )
 
 
-def _one_line(exc: Exception) -> str:
+def one_line(exc: Exception) -> str:
     return re.sub(r"\s+", " ", str(exc)).strip()
 
 
-def _scenario_id(scenario: Scenario) -> str:
+def scenario_id(scenario: Scenario) -> str:
     if not scenario.scenario_id:
         raise ValueError(f"confirmed scenario is missing scenario_id: {scenario.name}")
     return scenario.scenario_id
 
 
-def _resolve_under_root(project_root: Path, path: Path, label: str) -> Path:
+def resolve_under_root(project_root: Path, path: Path, label: str) -> Path:
     candidate = path if path.is_absolute() else project_root / path
     resolved = candidate.resolve()
     if not resolved.is_relative_to(project_root):
@@ -176,8 +177,8 @@ def _resolve_under_root(project_root: Path, path: Path, label: str) -> Path:
     return resolved
 
 
-def _resolve_project_file(project_root: Path, path: Path, label: str) -> Path:
-    resolved = _resolve_under_root(project_root, path, label)
+def resolve_project_file(project_root: Path, path: Path, label: str) -> Path:
+    resolved = resolve_under_root(project_root, path, label)
     if not resolved.is_file():
         raise ValueError(f"{label} does not exist or is not a file: {resolved}")
     return resolved
