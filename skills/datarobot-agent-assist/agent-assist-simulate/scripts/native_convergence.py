@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,6 +18,7 @@ from pydantic import ValidationError
 from artifacts import (
     one_line,
     resolve_project_file,
+    resolve_swarm_dir,
     resolve_under_root,
     scenario_id,
     load_criteria,
@@ -77,9 +77,7 @@ def initialize(
     resolved_config = resolve_project_file(
         project_root, config_path, "simulation config"
     )
-    resolved_results = resolve_project_file(
-        project_root, results_path, "swarm results"
-    )
+    resolved_results = resolve_project_file(project_root, results_path, "swarm results")
     resolved_convergence_dir = resolve_under_root(
         project_root, convergence_dir, "convergence directory"
     )
@@ -208,9 +206,7 @@ def report(
     resolved_convergence_dir = resolve_under_root(
         project_root, convergence_dir, "convergence directory"
     )
-    resolved_output = resolve_under_root(
-        project_root, output_path, "evaluation report"
-    )
+    resolved_output = resolve_under_root(project_root, output_path, "evaluation report")
     state = NativeConvergenceState.model_validate(
         load_json(resolved_convergence_dir / STATE_FILENAME)
     )
@@ -290,12 +286,12 @@ def _build_parser() -> argparse.ArgumentParser:
     initialize_parser.add_argument(
         "--results",
         type=Path,
-        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")) / "results.json",
+        default=resolve_swarm_dir() / "results.json",
     )
     initialize_parser.add_argument(
         "--convergence-dir",
         type=Path,
-        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")) / "convergence",
+        default=resolve_swarm_dir() / "convergence",
     )
     initialize_parser.add_argument("--actual-model")
 
@@ -304,7 +300,7 @@ def _build_parser() -> argparse.ArgumentParser:
     advance_parser.add_argument(
         "--convergence-dir",
         type=Path,
-        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")) / "convergence",
+        default=resolve_swarm_dir() / "convergence",
     )
     advance_parser.add_argument(
         "--rerun",
@@ -320,7 +316,7 @@ def _build_parser() -> argparse.ArgumentParser:
     report_parser.add_argument(
         "--convergence-dir",
         type=Path,
-        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")) / "convergence",
+        default=resolve_swarm_dir() / "convergence",
     )
     report_parser.add_argument("--output", type=Path, default=Path("eval_report.md"))
     return parser

@@ -5,6 +5,7 @@
 """Deterministic spec, criteria, and configuration artifact helpers."""
 
 import json
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,20 @@ class CriteriaError(ValueError):
 
 class ConfigError(ValueError):
     """Raised when simulation configuration cannot be loaded safely."""
+
+
+def resolve_swarm_dir() -> Path:
+    """Return the swarm working directory, persisting the chosen path for cross-process consistency."""
+    swarm_dir_env = os.environ.get("SWARM_DIR")
+    if swarm_dir_env:
+        return Path(swarm_dir_env)
+    swarm_temp = Path(".datarobot/swarm/swarm_temp")
+    if swarm_temp.exists():
+        return Path(swarm_temp.read_text(encoding="utf-8").strip())
+    resolved = Path(".datarobot/swarm").resolve()
+    swarm_temp.parent.mkdir(parents=True, exist_ok=True)
+    swarm_temp.write_text(str(resolved), encoding="utf-8")
+    return resolved
 
 
 def write_json(path: Path, data: object) -> None:
@@ -182,3 +197,29 @@ def resolve_project_file(project_root: Path, path: Path, label: str) -> Path:
     if not resolved.is_file():
         raise ValueError(f"{label} does not exist or is not a file: {resolved}")
     return resolved
+
+
+def merge_metrics(metrics_dir: Path) -> None:
+    """Merge per-worker metrics shards into metrics.jsonl, then remove the shards."""
+    shards = sorted(metrics_dir.glob("metrics-*.jsonl"))
+    if not shards:
+        return
+    lines: list[str] = []
+    for shard in shards:
+        try:
+            lines.append(shard.read_text(encoding="utf-8"))
+        except OSError:
+            continue
+    try:
+        metrics_path = metrics_dir / "metrics.jsonl"
+        metrics_path.parent.mkdir(parents=True, exist_ok=True)
+        with metrics_path.open("a", encoding="utf-8") as f:
+            for line in lines:
+                f.write(line)
+    except OSError:
+        return
+    for shard in shards:
+        try:
+            shard.unlink()
+        except OSError:
+            pass

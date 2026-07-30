@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import subprocess
 import sys
@@ -21,12 +20,14 @@ from pydantic import ValidationError
 from artifacts import (
     one_line,
     resolve_project_file,
+    resolve_swarm_dir,
     resolve_under_root,
     scenario_id,
     load_criteria,
     load_json,
     load_native_config,
     load_spec,
+    merge_metrics,
     write_json,
 )
 from swarm_contracts import (
@@ -259,7 +260,9 @@ def _drive_scenario(
 
         current_role = str(next_role)
         if "input_path" not in transition or "response_path" not in transition:
-            raise ValueError(f"submit response missing input_path/response_path: {transition}")
+            raise ValueError(
+                f"submit response missing input_path/response_path: {transition}"
+            )
         current_input = Path(str(transition["input_path"]))
         current_response = Path(str(transition["response_path"]))
 
@@ -420,6 +423,7 @@ def run(
         file=sys.stderr,
     )
 
+    merge_metrics(resolve_swarm_dir())
     return aggregate(spec_path, criteria_path, config_path, runs_dir, output_path)
 
 
@@ -656,7 +660,7 @@ def _build_parser() -> argparse.ArgumentParser:
     prepare_parser.add_argument(
         "--runs-dir",
         type=Path,
-        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")) / "runs",
+        default=resolve_swarm_dir() / "runs",
     )
     prepare_parser.add_argument(
         "--implementation", type=Path, action="append", default=None
@@ -673,12 +677,12 @@ def _build_parser() -> argparse.ArgumentParser:
     aggregate_parser.add_argument(
         "--runs-dir",
         type=Path,
-        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")) / "runs",
+        default=resolve_swarm_dir() / "runs",
     )
     aggregate_parser.add_argument(
         "--output",
         type=Path,
-        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")) / "results.json",
+        default=resolve_swarm_dir() / "results.json",
     )
 
     run_parser = subparsers.add_parser("run")
@@ -692,12 +696,12 @@ def _build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument(
         "--runs-dir",
         type=Path,
-        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")) / "runs",
+        default=resolve_swarm_dir() / "runs",
     )
     run_parser.add_argument(
         "--output",
         type=Path,
-        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")) / "results.json",
+        default=resolve_swarm_dir() / "results.json",
     )
     run_parser.add_argument(
         "--implementation", type=Path, action="append", default=None

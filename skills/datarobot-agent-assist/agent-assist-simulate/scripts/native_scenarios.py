@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from pathlib import Path
 from typing import Literal
@@ -17,6 +16,7 @@ from pydantic import ValidationError
 from artifacts import (
     one_line,
     resolve_project_file,
+    resolve_swarm_dir,
     resolve_under_root,
     load_json,
     load_native_config,
@@ -105,9 +105,7 @@ def configure(
 ) -> Path:
     """Persist the public native configuration collected by the harness."""
     project_root = spec_path.resolve().parent
-    resolved_output = resolve_under_root(
-        project_root, output_path, "simulation config"
-    )
+    resolved_output = resolve_under_root(project_root, output_path, "simulation config")
     context_path = (
         str(
             resolve_project_file(
@@ -267,21 +265,21 @@ def _build_parser() -> argparse.ArgumentParser:
     prepare_parser.add_argument(
         "--work-dir",
         type=Path,
-        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")),
+        default=resolve_swarm_dir(),
     )
 
     finalize_parser = subparsers.add_parser("finalize")
     finalize_parser.add_argument(
         "--work-dir",
         type=Path,
-        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")),
+        default=resolve_swarm_dir(),
     )
 
     confirm_parser = subparsers.add_parser("confirm")
     confirm_parser.add_argument(
         "--work-dir",
         type=Path,
-        default=Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")),
+        default=resolve_swarm_dir(),
     )
     confirm_parser.add_argument(
         "--output", type=Path, default=Path("evaluation_criteria.md")

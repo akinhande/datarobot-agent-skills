@@ -21,10 +21,12 @@ import subprocess
 import sys
 import tempfile
 import time
+import uuid
 from pathlib import Path
 
-# One project-local log for swarm and convergence workers (relative to agent cwd).
-METRICS_PATH = Path(os.environ.get("SWARM_DIR", ".datarobot/swarm")) / "metrics.jsonl"
+from artifacts import resolve_swarm_dir
+
+METRICS_PATH = resolve_swarm_dir() / "metrics.jsonl"
 PROMPT_ROLE_MAP = {
     "generate-attack.md": "generator/attack",
     "generate-behavior.md": "generator/behavior",
@@ -132,9 +134,12 @@ def _scenario_id_from_input(input_path: Path) -> str | None:
 
 def _write_metrics(record: dict[str, object]) -> None:
     try:
-        METRICS_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with METRICS_PATH.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        metrics_dir = METRICS_PATH.parent
+        metrics_dir.mkdir(parents=True, exist_ok=True)
+        shard = metrics_dir / f"metrics-{uuid.uuid4().hex}.jsonl"
+        shard.write_text(
+            json.dumps(record, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
     except OSError:
         pass
 
