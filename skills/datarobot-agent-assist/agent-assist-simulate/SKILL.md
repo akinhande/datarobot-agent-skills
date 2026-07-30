@@ -43,6 +43,9 @@ If any check fails, surface the error and stop.
 
 **Swarm directory:** All intermediate files (scenario inputs/outputs, run results, convergence state) are written to `.datarobot/swarm/` under the project root and deleted at the end of Step 5.
 
+If `.datarobot/swarm/` already exists at the start of a session, it is leftover from a prior
+session that did not complete Step 5 cleanup. Run `rm -rf .datarobot/swarm/` before proceeding.
+
 ---
 
 ## Pre-flight Check
@@ -213,8 +216,9 @@ guard in the implementation.
 > "The agent holds well on adversarial attacks and ambiguous behavior, but has soft spots under
 > sustained multi-turn pressure."
 
-- If `breached == 0`: skip Step 4 and go to Step 5.
-- If `breached > 0`: proceed to Step 4.
+Proceed to Step 4 regardless of `breached` — `native_convergence.py initialize` must run even
+when `breached == 0`, since it is what creates the convergence state that Step 5's `report`
+command reads.
 
 ---
 
