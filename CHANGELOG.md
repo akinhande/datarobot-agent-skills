@@ -11,6 +11,11 @@ Each entry should be prefixed with the affected skill folder name (for example,
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-08-12
+
+### Added
+- `datarobot-llm-gateway`:  Added a new skill which helps setting up llm gateway, it lists available llm models `dr llm-gateway list --output-format json` directly from `SKILL.md`. The CLI handles auth via its own credential store, and syncs env variables.
+
 ## [1.5.0] - 2026-08-10
 
 ### Added
@@ -38,12 +43,14 @@ Each entry should be prefixed with the affected skill folder name (for example,
 
 ### Changed
 - `datarobot-agent-assist-simulate`: UX improvements — domain-aware Q2, grouped scenario list, `dr dotenv update` in auth setup, live progress narration during swarm run.
+## [1.4.1] - 2026-07-31
+
+### Changed
 
 ## [1.4.0] - 2026-07-28
 
 ### Added
 - `datarobot-agent-assist`: New `agent-assist-simulate` swarm skill — adversarial scenario generation, multi-turn simulation, convergence loop, and evaluation reporting.
-- `datarobot-llm-gateway`: New skill for configuring LLM integration for a DataRobot agent application. Interviews the user, writes `.datarobot/llm-config.json` and   `.secrets/llm-external.env`, then runs `sync_llm_env.py` to merge into `.env` and remove the intermediate config files on success. Supports `gateway`, `deployed`, `external`, and `blueprint-gateway` modes. The script reads it from `.env`/env and emits only the model catalog. `sync_llm_env.py`, validates `llm_deployment_id`, and backs up before force-overwriting credential templates.
 
 ### Changed
 - `datarobot-agent-assist`: Move `check_codespace.py` into `agent-assist-build/scripts/` alongside `env_utils.py`.

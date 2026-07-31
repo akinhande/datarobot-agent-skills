@@ -26,11 +26,10 @@ ls <skill_scripts_dir>/sync_llm_env.py
 1. **Never** ask the user to paste API keys or `DATAROBOT_API_TOKEN` in chat
 2. **Never** read, copy, echo, or pass `DATAROBOT_API_TOKEN` yourself. The
    token lives in `$XDG_CONFIG_HOME/datarobot/drconfig.yaml` (default
-   `~/.config/datarobot/drconfig.yaml`), populated by `dr auth login`. Only
-   `list_gateway_models.py` reads that file; it never emits the token to
-   stdout. Do not run `cat drconfig.yaml`, `cat .env`, `env | grep TOKEN`,
-   `echo $DATAROBOT_API_TOKEN`, `curl -H "Authorization: Bearer $..."`, or
-   any equivalent one-liner
+   `~/.config/datarobot/drconfig.yaml`), populated by `dr auth login`, and
+   the `dr` CLI reads it internally. Do not run `cat drconfig.yaml`,
+   `cat .env`, `env | grep TOKEN`, `echo $DATAROBOT_API_TOKEN`,
+   `curl -H "Authorization: Bearer $..."`, or any equivalent one-liner
 3. **Never** pass secrets as CLI args to `sync_llm_env.py` or write them to
    tracked files
 4. **Never** set provider credentials (`AWS_*`, `OPENAI_*`, etc.) for `gateway` or `blueprint-gateway`
@@ -66,7 +65,7 @@ ls <skill_scripts_dir>/sync_llm_env.py
 mode they want. The value must be one of exactly these four:
 `gateway`, `deployed`, `external`, `blueprint-gateway`.
 
-Do **not** run `list_gateway_models.py`, do **not** offer a model list, and
+Do **not** run `dr llm-gateway list`, do **not** offer a model list, and
 do **not** write any config file until this question has been answered.
 
 Post the menu below verbatim (letters + integration keyword + short blurb) and
@@ -115,28 +114,28 @@ reply is anything else, re-ask the question — do not guess.
 
 ### `gateway` or `blueprint-gateway`
 
-1. Fetch the model list **only** via the bundled script. There is **no** `dr`
-   CLI command to list gateway models — do not attempt `dr get-llms`,
-   `dr list-llms`, `dr llm list`, `dr genai`, or any other variant. Run
-   exactly:
+1. Fetch the model list **only** via the DataRobot CLI. Run exactly:
 
    ```shell
-   python <skill_scripts_dir>/list_gateway_models.py
+   dr llm-gateway list --output-format json
    ```
 
-   The script reads `endpoint` and `token` from
-   `$XDG_CONFIG_HOME/datarobot/drconfig.yaml` (populated by `dr auth login`).
-   Do **not** read that file yourself, do **not** read `.env` for the token,
+   The CLI authenticates via its own credential store (populated by
+   `dr auth login`). Do **not** read `drconfig.yaml` or `.env` for the token,
    and do **not** pass `DATAROBOT_API_TOKEN` on the command line.
 
-   If the script exits non-zero with a "credentials not found" message, tell
-   the user to run `dr auth login` and stop — do not attempt any manual API
-   call and do not fabricate a menu.
+   If the command exits non-zero or prompts for auth, tell the user to run
+   `dr auth login` and stop — do not attempt any manual API call and do not
+   fabricate a menu.
 
-2. Parse the JSON returned in step 1. The model ids in the menu you show the
-   user **must** come from that JSON, verbatim, in the order returned. Do not
-   invent model ids. Do not reuse ids from your training data or from the
-   example below. If step 1 did not produce JSON, stop and report the error.
+2. Parse the JSON returned in step 1. It has the shape
+   `{"llms": [{"id", "name", "provider", "model", "selected"}, ...]}`. Use the
+   `model` field for each entry — that's what goes into `--llm-model` (the
+   sync script prepends `datarobot/` if you omit it). The model ids in the
+   menu you show the user **must** come from that JSON, verbatim, in the
+   order returned. Do not invent model ids. Do not reuse ids from your
+   training data or from the example below. If step 1 did not produce JSON,
+   stop and report the error.
 
    Count the entries; call it `N`. Print **exactly `N` labelled lines**, one
    per model. The letter scheme is `A..Z`, then `AA..AZ`, `BA..BZ`, and so on.
