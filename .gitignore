@@ -49,3 +49,7 @@ Thumbs.db
 .env
 .env.local
 
+# Swarm simulation reports
+eval_report.md
+evaluation_criteria.md
+
