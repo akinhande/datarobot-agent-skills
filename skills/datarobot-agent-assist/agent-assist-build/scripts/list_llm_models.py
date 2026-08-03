@@ -53,6 +53,21 @@ def normalize_gateway_model(model: str) -> str:
     return model
 
 
+def _as_int(value: object, default: int = 0) -> int:
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return default
+    return default
+
+
 def _map_gateway_catalog_entry(entry: dict[str, object]) -> LLMModel | None:
     if not entry.get("isActive", False):
         return None
@@ -62,7 +77,7 @@ def _map_gateway_catalog_entry(entry: dict[str, object]) -> LLMModel | None:
     llm_id = str(entry.get("llmId") or model_field)
     api_model = normalize_gateway_model(model_field)
     name = str(entry.get("name") or api_model)
-    return {
+    mapped: LLMModel = {
         "id": llm_id,
         "name": name,
         "source": SOURCE_GATEWAY,
@@ -70,8 +85,9 @@ def _map_gateway_catalog_entry(entry: dict[str, object]) -> LLMModel | None:
         "api_model": api_model,
         "deployment_id": "",
         "description": str(entry.get("description") or ""),
-        "context_size": int(entry.get("contextSize") or 0),
+        "context_size": _as_int(entry.get("contextSize")),
     }
+    return mapped
 
 
 def _map_deployed_entry(entry: dict[str, object]) -> LLMModel | None:
@@ -86,7 +102,7 @@ def _map_deployed_entry(entry: dict[str, object]) -> LLMModel | None:
     if not deployment_id:
         return None
     label = str(entry.get("label") or deployment_id)
-    return {
+    mapped: LLMModel = {
         "id": deployment_id,
         "name": label,
         "source": SOURCE_DEPLOYED,
@@ -96,6 +112,7 @@ def _map_deployed_entry(entry: dict[str, object]) -> LLMModel | None:
         "description": str(entry.get("description") or ""),
         "context_size": 0,
     }
+    return mapped
 
 
 def _map_cli_entry(entry: dict[str, object]) -> LLMModel:
@@ -109,7 +126,7 @@ def _map_cli_entry(entry: dict[str, object]) -> LLMModel:
     else:
         api_model = normalize_gateway_model(str(entry.get("model") or model_id))
         provider = str(entry.get("provider") or "Unknown")
-    return {
+    mapped: LLMModel = {
         "id": model_id,
         "name": name,
         "source": source,
@@ -117,8 +134,9 @@ def _map_cli_entry(entry: dict[str, object]) -> LLMModel:
         "api_model": api_model,
         "deployment_id": deployment_id,
         "description": str(entry.get("description") or ""),
-        "context_size": int(entry.get("context_size") or 0),
+        "context_size": _as_int(entry.get("context_size")),
     }
+    return mapped
 
 
 def _fetch_json_paginated(
