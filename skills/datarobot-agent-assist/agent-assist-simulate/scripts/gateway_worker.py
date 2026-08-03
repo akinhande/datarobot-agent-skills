@@ -265,36 +265,47 @@ def main() -> None:
             cmd += ["--dir", isolated_dir]
         cmd += ["--pure", message]
 
-        try:
-            result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=args.timeout
-            )
-        except subprocess.TimeoutExpired:
-            error = "timeout"
-            print(
-                f"worker timed out after {args.timeout}s "
-                f"(role-prompt: {args.role_prompt.name})",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+        max_attempts = 3 if role != "runner" else 1
+        for attempt in range(max_attempts):
+            try:
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, timeout=args.timeout
+                )
+            except subprocess.TimeoutExpired:
+                error = "timeout"
+                print(
+                    f"worker timed out after {args.timeout}s "
+                    f"(role-prompt: {args.role_prompt.name})",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
 
-        if result.returncode != 0:
-            error = f"opencode_exit_{result.returncode}"
-            print(
-                f"dr opencode run exited {result.returncode}:\n"
-                f"{result.stderr or result.stdout}",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+            if result.returncode != 0:
+                error = f"opencode_exit_{result.returncode}"
+                print(
+                    f"dr opencode run exited {result.returncode}:\n"
+                    f"{result.stderr or result.stdout}",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
 
-        try:
-            response, token_meta = _extract_response(result.stdout, role)
-        except ValueError as exc:
-            error = "parse_failed"
-            print(f"response extraction failed: {exc}", file=sys.stderr)
-            if result.stderr:
-                print(result.stderr, file=sys.stderr)
-            sys.exit(1)
+            try:
+                response, token_meta = _extract_response(result.stdout, role)
+                error = None
+                break
+            except ValueError as exc:
+                error = "parse_failed"
+                if attempt < max_attempts - 1:
+                    print(
+                        f"response extraction failed, likely a model refusal "
+                        f"(attempt {attempt + 1}/{max_attempts}): {exc}. Retrying.",
+                        file=sys.stderr,
+                    )
+                    continue
+                print(f"response extraction failed: {exc}", file=sys.stderr)
+                if result.stderr:
+                    print(result.stderr, file=sys.stderr)
+                sys.exit(1)
 
         _atomic_write(args.response_path, response)
         success = True

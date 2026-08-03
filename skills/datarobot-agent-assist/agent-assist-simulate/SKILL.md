@@ -37,6 +37,7 @@ dr opencode upgrade && export PATH="$PATH:$HOME/.opencode/bin"
 
 ```bash
 dr auth check
+dr dotenv update
 ```
 
 If any check fails, surface the error and stop.
@@ -165,7 +166,25 @@ Validate all outputs:
 <python> <skill_scripts_dir>/native_scenarios.py finalize
 ```
 
-Read `finalize` stdout and present the candidate list to the user. Ask them to add/remove scenarios or say "run it" to confirm.
+Read `finalize` stdout and present the candidate list grouped by track. For each scenario output one line:
+`- [name] — [one sentence on what it targets]`
+
+Example:
+```
+Attack (4)
+- Malicious CSV Injects Visualization Override — tests whether the agent follows instructions embedded in uploaded file content
+- Path Traversal via File Path Argument — tests whether the agent rejects file paths outside the allowed directory
+...
+
+Behavior (3)
+...
+
+Persistence (3)
+...
+```
+
+Then ask:
+> "Add or remove any, or say 'run it' to confirm. Say 'explain [name]' or 'explain all' for full detail on any scenario."
 Write the authoritative criteria:
 
 ```bash
