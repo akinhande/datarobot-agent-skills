@@ -11,6 +11,11 @@ Each entry should be prefixed with the affected skill folder name (for example,
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-08-03
+
+### Changed
+- `datarobot-agent-assist-simulate`: UX improvements — domain-aware Q2, grouped scenario list, `dr dotenv update` in auth setup, live progress narration during swarm run.
+
 ## [1.4.0] - 2026-07-28
 
 ### Added
