@@ -182,7 +182,9 @@ def _fetch_deployed_models_rest(endpoint: str, api_token: str) -> list[LLMModel]
     return models
 
 
-def _fetch_llm_models_via_cli(endpoint: str, api_token: str) -> tuple[list[LLMModel], list[str]]:
+def _fetch_llm_models_via_cli(
+    endpoint: str, api_token: str
+) -> tuple[list[LLMModel], list[str]]:
     env = os.environ.copy()
     env["DATAROBOT_ENDPOINT"] = endpoint
     env["DATAROBOT_API_TOKEN"] = api_token
@@ -203,9 +205,7 @@ def _fetch_llm_models_via_cli(endpoint: str, api_token: str) -> tuple[list[LLMMo
     warnings: list[str] = []
     if result.stderr.strip():
         warnings.extend(
-            line.strip()
-            for line in result.stderr.splitlines()
-            if line.strip()
+            line.strip() for line in result.stderr.splitlines() if line.strip()
         )
 
     if result.returncode != 0:
@@ -221,7 +221,9 @@ def _fetch_llm_models_via_cli(endpoint: str, api_token: str) -> tuple[list[LLMMo
     if not isinstance(llms, list):
         raise RuntimeError("Unexpected dr llm-gateway list JSON format")
 
-    return [_map_cli_entry(entry) for entry in llms if isinstance(entry, dict)], warnings
+    return [
+        _map_cli_entry(entry) for entry in llms if isinstance(entry, dict)
+    ], warnings
 
 
 def fetch_llm_models(endpoint: str, api_token: str) -> list[LLMModel]:

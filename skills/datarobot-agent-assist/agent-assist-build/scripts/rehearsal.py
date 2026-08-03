@@ -291,7 +291,9 @@ class ModelCatalog:
         """Return (resolved model, was_substituted)."""
         requested = requested.strip()
         if not requested:
-            return self._fallback(prefer_source=prefer_source, exclude_id=exclude_id), True
+            return self._fallback(
+                prefer_source=prefer_source, exclude_id=exclude_id
+            ), True
 
         exact = self._find_exact(requested)
         if exact and (exclude_id is None or exact["id"] != exclude_id):
