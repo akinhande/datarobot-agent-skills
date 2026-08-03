@@ -17,17 +17,17 @@ tasks:
   ruff:check:
     desc: Run ruff linter on all Python scripts
     cmds:
-      - uvx ruff check .
+      - uv run --group dev ruff check .
 
   ruff:format:
     desc: Run ruff formatter on all Python scripts
     cmds:
-      - uvx ruff format .
+      - uv run --group dev ruff format .
 
   ruff:format:check:
     desc: Check if Python scripts are formatted correctly (CI mode)
     cmds:
-      - uvx ruff format --check .
+      - uv run --group dev ruff format --check .
 
   shellcheck:
     desc: Run shellcheck on all shell scripts
