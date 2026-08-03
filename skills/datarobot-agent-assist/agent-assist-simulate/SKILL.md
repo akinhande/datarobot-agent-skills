@@ -212,6 +212,9 @@ each as a separate `--implementation` flag. Tell the user before launching:
 Include `--tools-path` only when `execution.mode` is `selective_e2e` and `tools.py` exists. Parse
 stdout as the summary JSON. Surface any `warning:` lines from stderr before presenting results.
 
+While the swarm is running, read the task output file every 30 seconds and narrate newly completed
+scenarios to the user (scenario name, track, pass/breach/error). Continue until the run completes.
+
 **Present results:**
 
 Say: `"N of M scenarios passed."`
