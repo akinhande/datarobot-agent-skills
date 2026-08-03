@@ -43,15 +43,18 @@ def _build_message(role_prompt_path: Path, input_path: Path) -> str:
     return f"{role_prompt}\n\n# Input\n\n{input_json}"
 
 
-def _extract_response(stdout: str, role: str = "") -> dict[str, object]:
-    """Parse JSONL event stream and return the assistant's JSON object.
+def _extract_response(
+    stdout: str, role: str = ""
+) -> tuple[dict[str, object], dict[str, object]]:
+    """Parse JSONL event stream and return (response, token_meta).
 
     opencode --format json emits one event per line:
       {"type":"step_start", "part": {...}}
       {"type":"text",       "part": {"text": "<assistant response>", ...}}
-      {"type":"step_finish","part": {...}}
+      {"type":"step_finish","part": {"tokens": {...}, "cost": float, ...}}
 
     Concatenate all type=="text" part.text payloads, then parse as JSON.
+    Accumulate token counts and cost from all type=="step_finish" events.
 
     For the runner role only, a plain-prose reply (the simulation model declining
     the framing instead of emitting the envelope) is wrapped as an
@@ -59,6 +62,12 @@ def _extract_response(stdout: str, role: str = "") -> dict[str, object]:
     agent is behaviorally a refusal and should be scored, not discarded.
     """
     text_parts: list[str] = []
+    input_tokens = 0
+    output_tokens = 0
+    cache_read_tokens = 0
+    cache_write_tokens = 0
+    total_cost = 0.0
+
     for line in stdout.splitlines():
         line = line.strip()
         if not line:
@@ -71,6 +80,22 @@ def _extract_response(stdout: str, role: str = "") -> dict[str, object]:
             chunk = event.get("part", {}).get("text", "")
             if chunk:
                 text_parts.append(chunk)
+        elif event.get("type") == "step_finish":
+            part = event.get("part", {})
+            tokens = part.get("tokens", {})
+            input_tokens += tokens.get("input", 0)
+            output_tokens += tokens.get("output", 0)
+            cache_read_tokens += tokens.get("cache", {}).get("read", 0)
+            cache_write_tokens += tokens.get("cache", {}).get("write", 0)
+            total_cost += part.get("cost", 0.0) or 0.0
+
+    token_meta: dict[str, object] = {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cache_read_tokens": cache_read_tokens,
+        "cache_write_tokens": cache_write_tokens,
+        "cost": round(total_cost, 6),
+    }
 
     combined = "".join(text_parts).strip()
     if not combined:
@@ -87,17 +112,17 @@ def _extract_response(stdout: str, role: str = "") -> dict[str, object]:
         result = json.loads(combined)
     except json.JSONDecodeError as exc:
         if role == "runner":
-            return {"type": "assistant_response", "content": combined}
+            return {"type": "assistant_response", "content": combined}, token_meta
         raise ValueError(f"worker response is not valid JSON: {exc}") from exc
 
     if not isinstance(result, dict):
         if role == "runner":
-            return {"type": "assistant_response", "content": combined}
+            return {"type": "assistant_response", "content": combined}, token_meta
         raise ValueError(
             f"expected a JSON object from worker, got {type(result).__name__}"
         )
 
-    return result
+    return result, token_meta
 
 
 def _atomic_write(path: Path, data: dict[str, object]) -> None:
@@ -218,6 +243,7 @@ def main() -> None:
     isolated_dir = None if args.server_url else tempfile.mkdtemp(prefix="dr-worker-")
     start = time.monotonic()
     success = False
+    token_meta: dict[str, object] = {}
     error: str | None = None
 
     try:
@@ -262,7 +288,7 @@ def main() -> None:
             sys.exit(1)
 
         try:
-            response = _extract_response(result.stdout, role)
+            response, token_meta = _extract_response(result.stdout, role)
         except ValueError as exc:
             error = "parse_failed"
             print(f"response extraction failed: {exc}", file=sys.stderr)
@@ -284,6 +310,8 @@ def main() -> None:
             "duration_s": round(time.monotonic() - start, 2),
             "success": success,
         }
+        if success and token_meta:
+            record.update(token_meta)
         if scenario_id is not None:
             record["scenario_id"] = scenario_id
         if error is not None:
