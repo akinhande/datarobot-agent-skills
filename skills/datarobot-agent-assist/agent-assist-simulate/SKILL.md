@@ -67,8 +67,9 @@ If `agent_config.yaml` already exists, read it and ask:
 **Q1 — User type:** Read `agent_spec.md` and offer 2–4 domain-specific personas plus
 "Other — describe your user segment."
 
-**Q2 — Grounding context (optional):** Ask for customer tickets, support logs, or behavior
-descriptions. Save to `user_context.txt` if provided. Skip if the user says "skip."
+**Q2 — Grounding context (optional):** Based on `agent_spec.md`, ask for domain-appropriate
+examples (e.g. past queries, sample inputs, real requests).
+Keep the question to one sentence. Save to `user_context.txt` if provided. Skip if the user says "skip."
 
 **Q3 — Fixing rounds:** Ask:
 > "How many rounds of fixing should I run on failing scenarios? Default: 3."
