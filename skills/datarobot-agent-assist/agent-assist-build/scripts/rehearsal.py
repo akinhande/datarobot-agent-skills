@@ -14,6 +14,8 @@ From repository root, use:
   python3 skills/datarobot-agent-assist/rehearsal.py ...
 """
 
+from __future__ import annotations
+
 import argparse
 import concurrent.futures
 import contextlib
@@ -27,11 +29,19 @@ import time
 import urllib.error
 import urllib.request
 from collections.abc import Iterator
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
 from env_utils import get_datarobot_credentials
-from list_llm_models import fetch_llm_models
+from list_llm_models import (
+    DEPLOYED_LLM_MODEL,
+    LLMModel,
+    SOURCE_DEPLOYED,
+    SOURCE_GATEWAY,
+    fetch_llm_models,
+    normalize_gateway_model,
+)
 
 # Model used for spec extraction and tool simulation.
 # The agent's own model (from the spec) is used for the main turn loop.
@@ -108,10 +118,10 @@ def print_section(label: str, content: str) -> None:
     print()
 
 
-def print_model_chosen(requested: str, chosen: str) -> None:
+def print_model_chosen(requested: str, chosen: ResolvedModel) -> None:
     """Tell the user an available model was selected instead of the requested one."""
-    print(f"[Model] '{requested}' is not available in your LLM Gateway catalog.")
-    print(f"Using: {chosen}")
+    print(f"[Model] '{requested}' is not available.")
+    print(f"Using: {chosen.format_display()}")
     print()
 
 
@@ -132,55 +142,181 @@ def get_credentials(target_dir: Path) -> tuple[str, str]:
     return api_token, endpoint
 
 
-def strip_model_prefix(model: str) -> str:
-    while model.startswith("datarobot/"):
-        model = model[len("datarobot/") :]
-    return model
-
-
 def _model_slug(model: str) -> str:
-    """Normalized trailing segment for fuzzy catalog matching."""
-    slug = strip_model_prefix(model).split("/")[-1].lower()
+    """Normalized trailing segment for fuzzy gateway catalog matching."""
+    slug = normalize_gateway_model(model).split("/")[-1].lower()
     return slug.replace(".", "-").replace("_", "-")
 
 
+@dataclass(frozen=True)
+class ResolvedModel:
+    source: str
+    id: str
+    api_model: str
+    deployment_id: str
+    display: str
+
+    def to_config(self) -> dict[str, str]:
+        return {
+            "source": self.source,
+            "id": self.id,
+            "api_model": self.api_model,
+            "deployment_id": self.deployment_id,
+            "display": self.display,
+        }
+
+    @classmethod
+    def from_config(
+        cls,
+        data: dict[str, Any] | str,
+        catalog: ModelCatalog | LazyModelCatalog | None = None,
+    ) -> ResolvedModel:
+        if isinstance(data, str):
+            if catalog is not None:
+                resolved, _ = catalog.pick_available(data)
+                return resolved
+            api_model = (
+                DEPLOYED_LLM_MODEL
+                if data == DEPLOYED_LLM_MODEL
+                else normalize_gateway_model(data)
+            )
+            return cls(
+                source=SOURCE_GATEWAY,
+                id=data,
+                api_model=api_model,
+                deployment_id="",
+                display=data,
+            )
+        return cls(
+            source=str(data["source"]),
+            id=str(data["id"]),
+            api_model=str(data["api_model"]),
+            deployment_id=str(data.get("deployment_id") or ""),
+            display=str(data.get("display") or data["id"]),
+        )
+
+    def format_display(self) -> str:
+        if self.source == SOURCE_DEPLOYED:
+            return f"{self.display} (deployed: {self.id})"
+        return f"{self.display} (gateway)"
+
+
+def _entry_to_resolved(entry: LLMModel) -> ResolvedModel:
+    return ResolvedModel(
+        source=entry["source"],
+        id=entry["id"],
+        api_model=entry["api_model"],
+        deployment_id=entry["deployment_id"],
+        display=entry["name"],
+    )
+
+
 class ModelCatalog:
-    """Active LLM Gateway models; picks a substitute when the requested ID is missing."""
+    """Gateway and deployed LLMs; picks a substitute when the requested ID is missing."""
 
     def __init__(self, token: str, endpoint: str) -> None:
-        models = fetch_llm_models(endpoint, token)
-        self._names = [strip_model_prefix(m["name"]) for m in models]
-        self._by_lower = {name.lower(): name for name in self._names}
+        self._entries = fetch_llm_models(endpoint, token)
+        self._gateway = [m for m in self._entries if m["source"] == SOURCE_GATEWAY]
+        self._deployed = [m for m in self._entries if m["source"] == SOURCE_DEPLOYED]
+        self._by_id = {m["id"]: m for m in self._entries}
+        self._by_name_lower: dict[str, LLMModel] = {}
+        self._by_api_model_lower: dict[str, LLMModel] = {}
+        for entry in self._entries:
+            self._by_name_lower[entry["name"].lower()] = entry
+            self._by_api_model_lower[entry["api_model"].lower()] = entry
+            self._by_id[entry["id"]] = entry
 
-    def pick_available(self, requested: str) -> tuple[str, bool]:
-        """Return (catalog model ID, was_substituted)."""
-        requested = strip_model_prefix(requested)
-        if requested in self._names:
-            return requested, False
+    def _find_exact(self, requested: str) -> LLMModel | None:
+        if requested in self._by_id:
+            return self._by_id[requested]
+        lowered = requested.lower()
+        if lowered in self._by_name_lower:
+            return self._by_name_lower[lowered]
+        normalized = normalize_gateway_model(requested)
+        if normalized.lower() in self._by_api_model_lower:
+            return self._by_api_model_lower[normalized.lower()]
+        if lowered in self._by_api_model_lower:
+            return self._by_api_model_lower[lowered]
+        return None
 
-        canonical = self._by_lower.get(requested.lower())
-        if canonical:
-            return canonical, False
-
+    def _gateway_slug_matches(self, requested: str) -> list[LLMModel]:
         req_slug = _model_slug(requested)
         if not req_slug:
-            pass
-        else:
-            requested_prefix = (
-                requested.split("/", 1)[0].lower() if "/" in requested else None
-            )
-            slug_matches: list[str] = []
-            for name in self._names:
-                if req_slug == _model_slug(name):
-                    slug_matches.append(name)
-            if slug_matches:
-                if requested_prefix:
-                    for name in slug_matches:
-                        if name.split("/", 1)[0].lower() == requested_prefix:
-                            return name, True
-                return slug_matches[0], True
+            return []
+        requested_prefix = (
+            requested.split("/", 1)[0].lower() if "/" in requested else None
+        )
+        matches: list[LLMModel] = []
+        for entry in self._gateway:
+            if req_slug != _model_slug(entry["api_model"]):
+                continue
+            if requested_prefix:
+                api_prefix = entry["api_model"].split("/", 1)[0].lower()
+                if api_prefix != requested_prefix:
+                    continue
+            matches.append(entry)
+        return matches
 
-        return self._names[0], True
+    def _fallback(
+        self,
+        *,
+        prefer_source: str | None,
+        exclude_id: str | None,
+    ) -> ResolvedModel:
+        pools: list[list[LLMModel]] = []
+        if prefer_source == SOURCE_GATEWAY:
+            pools = [self._gateway, self._deployed]
+        elif prefer_source == SOURCE_DEPLOYED:
+            pools = [self._deployed, self._gateway]
+        else:
+            pools = [self._entries]
+
+        for pool in pools:
+            for entry in pool:
+                if exclude_id and entry["id"] == exclude_id:
+                    continue
+                return _entry_to_resolved(entry)
+
+        if self._entries:
+            return _entry_to_resolved(self._entries[0])
+        raise RuntimeError("No LLM models available")
+
+    def pick_available(
+        self,
+        requested: str,
+        *,
+        prefer_source: str | None = None,
+        exclude_id: str | None = None,
+    ) -> tuple[ResolvedModel, bool]:
+        """Return (resolved model, was_substituted)."""
+        requested = requested.strip()
+        if not requested:
+            return self._fallback(
+                prefer_source=prefer_source, exclude_id=exclude_id
+            ), True
+
+        exact = self._find_exact(requested)
+        if exact and (exclude_id is None or exact["id"] != exclude_id):
+            return _entry_to_resolved(exact), False
+
+        slug_matches = self._gateway_slug_matches(requested)
+        if slug_matches:
+            for entry in slug_matches:
+                if exclude_id and entry["id"] == exclude_id:
+                    continue
+                return _entry_to_resolved(entry), True
+
+        inferred_source = prefer_source
+        if inferred_source is None and exact is not None:
+            inferred_source = exact["source"]
+
+        return (
+            self._fallback(
+                prefer_source=inferred_source,
+                exclude_id=exclude_id,
+            ),
+            True,
+        )
 
 
 class LazyModelCatalog:
@@ -191,10 +327,20 @@ class LazyModelCatalog:
         self._endpoint = endpoint
         self._catalog: ModelCatalog | None = None
 
-    def pick_available(self, requested: str) -> tuple[str, bool]:
+    def pick_available(
+        self,
+        requested: str,
+        *,
+        prefer_source: str | None = None,
+        exclude_id: str | None = None,
+    ) -> tuple[ResolvedModel, bool]:
         if self._catalog is None:
             self._catalog = ModelCatalog(self._token, self._endpoint)
-        return self._catalog.pick_available(requested)
+        return self._catalog.pick_available(
+            requested,
+            prefer_source=prefer_source,
+            exclude_id=exclude_id,
+        )
 
 
 def strip_code_fence(text: str) -> str:
@@ -267,16 +413,28 @@ _UNSUPPORTED_PARAMS: dict[str, set[str]] = {
 }
 
 
-def _model_params(model: str, **kwargs: Any) -> dict[str, Any]:
+def _model_params(resolved: ResolvedModel, **kwargs: Any) -> dict[str, Any]:
     """Return kwargs filtered to params supported by the given model."""
+    if resolved.source == SOURCE_DEPLOYED:
+        return dict(kwargs)
     unsupported: set[str] = set()
     for pattern, fields in _UNSUPPORTED_PARAMS.items():
-        if pattern in model:
+        if pattern in resolved.api_model:
             unsupported |= fields
     dropped = unsupported & set(kwargs)
     if dropped:
-        progress(f"note: dropped unsupported params {dropped} for model '{model}'")
+        progress(
+            f"note: dropped unsupported params {dropped} for model "
+            f"'{resolved.api_model}'"
+        )
     return {k: v for k, v in kwargs.items() if k not in unsupported}
+
+
+def _chat_url(endpoint: str, resolved: ResolvedModel) -> str:
+    base = endpoint.rstrip("/")
+    if resolved.source == SOURCE_DEPLOYED:
+        return f"{base}/deployments/{resolved.deployment_id}/chat/completions"
+    return f"{base}/genai/llmgw/chat/completions"
 
 
 TYPE_MAP = {
@@ -354,27 +512,28 @@ def _parse_model_not_found(body: str, status: int) -> bool:
     try:
         data = json.loads(body)
     except json.JSONDecodeError:
-        return False
+        return "not found" in body.lower()
     msg = str(data.get("detail") or data.get("details") or data.get("message") or "")
-    return "not found" in msg.lower() and "catalog" in msg.lower()
+    combined = f"{msg} {body}".lower()
+    return "not found" in combined
 
 
 def llm_call(
     token: str,
     endpoint: str,
-    model: str,
+    resolved: ResolvedModel,
     messages: list[dict[str, Any]],
     tools: list[dict[str, Any]] | None = None,
     tool_choice: str | dict[str, Any] = "auto",
     *,
     catalog: ModelCatalog | LazyModelCatalog | None = None,
     _allow_retry: bool = True,
-) -> tuple[dict[str, Any], str]:
-    url = f"{endpoint.rstrip('/')}/genai/llmgw/chat/completions"
-    payload = {
-        "model": model,
+) -> tuple[dict[str, Any], ResolvedModel]:
+    url = _chat_url(endpoint, resolved)
+    payload: dict[str, Any] = {
+        "model": resolved.api_model,
         "messages": messages,
-        **_model_params(model, temperature=0.0),
+        **_model_params(resolved, temperature=0.0),
     }
     if tools:
         payload["tools"] = tools
@@ -390,13 +549,20 @@ def llm_call(
     )
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
-            return cast(dict[str, Any], json.loads(resp.read())), model
+            return cast(dict[str, Any], json.loads(resp.read())), resolved
     except urllib.error.HTTPError as e:
         body = e.read().decode()
+        if e.code in {401, 403}:
+            print(f"API error {e.code}: {body}", file=sys.stderr)
+            sys.exit(1)
         if _parse_model_not_found(body, e.code) and catalog and _allow_retry:
-            chosen, substituted = catalog.pick_available(model)
+            chosen, substituted = catalog.pick_available(
+                resolved.id,
+                prefer_source=resolved.source,
+                exclude_id=resolved.id,
+            )
             if substituted:
-                print_model_chosen(model, chosen)
+                print_model_chosen(resolved.id, chosen)
             return llm_call(
                 token,
                 endpoint,
@@ -453,12 +619,12 @@ def build_tool_definitions(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def simulate_tool_return(
     token: str,
     endpoint: str,
-    simulation_model: str,
+    simulation_model: ResolvedModel,
     tool_name: str,
     arguments: dict[str, Any],
     spec_tools: list[dict[str, Any]],
     catalog: ModelCatalog | LazyModelCatalog | None = None,
-) -> tuple[dict[str, Any], str]:
+) -> tuple[dict[str, Any], ResolvedModel]:
     spec_tool = next((t for t in spec_tools if t["function_name"] == tool_name), None)
     if spec_tool:
         out_schema = ", ".join(
@@ -484,7 +650,10 @@ def simulate_tool_return(
             },
             {
                 "role": "user",
-                "content": f"Tool: {tool_name}\nArguments: {json.dumps(arguments)}\nOutput fields: {out_schema}",
+                "content": (
+                    f"Tool: {tool_name}\nArguments: {json.dumps(arguments)}\n"
+                    f"Output fields: {out_schema}"
+                ),
             },
         ],
         catalog=catalog,
@@ -516,6 +685,10 @@ def load_session(session_dir: str) -> tuple[dict[str, Any], list[dict[str, Any]]
     return config, messages, state_file
 
 
+def _resolved_models_differ(a: ResolvedModel, b: ResolvedModel) -> bool:
+    return a.to_config() != b.to_config()
+
+
 # ── commands ──────────────────────────────────────────────────────────────────
 
 
@@ -526,7 +699,15 @@ def cmd_init(spec_path: str, session_dir: str, target_dir: Path) -> None:
 
     token, endpoint = get_credentials(target_dir)
     catalog = ModelCatalog(token, endpoint)
-    simulation_model, sim_substituted = catalog.pick_available(SIMULATION_MODEL)
+    simulation_model, sim_substituted = catalog.pick_available(
+        SIMULATION_MODEL,
+        prefer_source=SOURCE_GATEWAY,
+    )
+    if sim_substituted and simulation_model.source == SOURCE_DEPLOYED:
+        progress(
+            "note: no gateway model matched simulation default; "
+            f"using deployed model {simulation_model.id}"
+        )
     if sim_substituted:
         print_model_chosen(SIMULATION_MODEL, simulation_model)
 
@@ -564,10 +745,10 @@ def cmd_init(spec_path: str, session_dir: str, target_dir: Path) -> None:
         )
         sys.exit(1)
     spec = json.loads(tool_calls[0]["function"]["arguments"])
-    requested_model = strip_model_prefix(spec["model"])
-    model, model_substituted = catalog.pick_available(requested_model)
+    requested_model = str(spec["model"]).strip()
+    agent_model, model_substituted = catalog.pick_available(requested_model)
     if model_substituted:
-        print_model_chosen(requested_model, model)
+        print_model_chosen(requested_model, agent_model)
     system_prompt = spec["system_prompt"]
     tools = spec.get("tools", [])
     examples = spec.get("examples", [])
@@ -575,8 +756,8 @@ def cmd_init(spec_path: str, session_dir: str, target_dir: Path) -> None:
     with open(os.path.join(session_dir, "config.json"), "w") as f:
         json.dump(
             {
-                "model": model,
-                "simulation_model": simulation_model,
+                "model": agent_model.to_config(),
+                "simulation_model": simulation_model.to_config(),
                 "system_prompt": system_prompt,
                 "tool_definitions": build_tool_definitions(tools),
                 "spec_tools": tools,
@@ -598,7 +779,7 @@ def cmd_init(spec_path: str, session_dir: str, target_dir: Path) -> None:
     prompt_preview = system_prompt[:200] + ("…" if len(system_prompt) > 200 else "")
 
     body = [
-        f"Model: {model}",
+        f"Model: {agent_model.format_display()}",
         f"System prompt: {prompt_preview}",
         "",
         f"Tools ({len(tools)}):",
@@ -614,12 +795,12 @@ def run_tool_call(
     tc: dict[str, Any],
     token: str,
     endpoint: str,
-    simulation_model: str,
+    simulation_model: ResolvedModel,
     spec_tools: list[dict[str, Any]],
     catalog: ModelCatalog | LazyModelCatalog | None,
     stats: TurnProgress,
     lock: threading.Lock,
-) -> tuple[dict[str, Any], str]:
+) -> tuple[dict[str, Any], ResolvedModel]:
     """Execute one tool call cycle: dispatch → simulate → return tool message."""
     fn = tc["function"]["name"]
     try:
@@ -663,8 +844,17 @@ def cmd_turn(session_dir: str, message: str, target_dir: Path | None = None) -> 
 
     catalog = LazyModelCatalog(token, endpoint)
 
-    model = config["model"]
-    simulation_model = config.get("simulation_model", SIMULATION_MODEL)
+    agent_model = ResolvedModel.from_config(config["model"], catalog)
+    simulation_model = ResolvedModel.from_config(
+        config.get("simulation_model", SIMULATION_MODEL),
+        catalog,
+    )
+    if isinstance(config.get("model"), str) or isinstance(
+        config.get("simulation_model"), str
+    ):
+        config["model"] = agent_model.to_config()
+        config["simulation_model"] = simulation_model.to_config()
+        _save_config(session_dir, config)
     tool_defs = config["tool_definitions"]
     spec_tools = config["spec_tools"]
 
@@ -679,11 +869,17 @@ def cmd_turn(session_dir: str, message: str, target_dir: Path | None = None) -> 
     max_tool_rounds = 20
     for _round in range(max_tool_rounds):
         t0 = time.monotonic()
-        resp, model = llm_call(
-            token, endpoint, model, messages, tool_defs or None, catalog=catalog
+        resp, agent_model = llm_call(
+            token,
+            endpoint,
+            agent_model,
+            messages,
+            tool_defs or None,
+            catalog=catalog,
         )
-        if model != config["model"]:
-            config["model"] = model
+        saved_agent = ResolvedModel.from_config(config["model"], catalog)
+        if _resolved_models_differ(agent_model, saved_agent):
+            config["model"] = agent_model.to_config()
             _save_config(session_dir, config)
         elapsed = time.monotonic() - t0
         usage = resp.get("usage", {})
@@ -710,8 +906,12 @@ def cmd_turn(session_dir: str, message: str, target_dir: Path | None = None) -> 
                 results = list(executor.map(run_tool, msg["tool_calls"]))
             tool_messages = [r[0] for r in results]
             simulation_model = results[-1][1]
-            if simulation_model != config.get("simulation_model"):
-                config["simulation_model"] = simulation_model
+            saved_simulation = ResolvedModel.from_config(
+                config.get("simulation_model", SIMULATION_MODEL),
+                catalog,
+            )
+            if _resolved_models_differ(simulation_model, saved_simulation):
+                config["simulation_model"] = simulation_model.to_config()
                 _save_config(session_dir, config)
             messages.extend(tool_messages)
         else:

@@ -11,11 +11,27 @@ Each entry should be prefixed with the affected skill folder name (for example,
 
 ## [Unreleased]
 
-## [1.4.0] - 2026-07-28
+## [1.4.2] - 2026-08-04
 
 - `datarobot-model-training`: Create/associate a `dr.UseCase` when creating datasets and projects, so projects aren't orphaned in the DataRobot UI.
+
+## [1.4.1] - 2026-08-03
+
+### Changed
+- `datarobot-agent-assist-simulate`: UX improvements — domain-aware Q2, grouped scenario list, `dr dotenv update` in auth setup, live progress narration during swarm run.
+
+## [1.4.0] - 2026-07-28
+
+### Added
+- `datarobot-agent-assist`: New `agent-assist-simulate` swarm skill — adversarial scenario generation, multi-turn simulation, convergence loop, and evaluation reporting.
+
+### Changed
+- `datarobot-agent-assist`: Move `check_codespace.py` into `agent-assist-build/scripts/` alongside `env_utils.py`.
+- `datarobot-agent-assist`: Pin `ruff==0.15.22` in dev dependencies to prevent silent version drift.
+
+## [1.3.10] - 2026-07-28
+
 - `datarobot-agent-assist`: Merge pre-coding spec gate into `pre-coding-checklist.md` Bootstrap step 2 (removes duplicate "Before Coding Begins" section). Add missing-spec recovery, path validation, session flags, workspace ask-don't-guess for Code, and journey deduplication. Trim `SKILL.md`: move CLI setup, helper scripts, plugin tool mapping, dress rehearsal prompt, path resolution, and agent_spec schema into references. Flow polish: Code-no-spec merges with Path resolution step 1, schema read hook in Spec Display, `design_to_code` guard and Windows stop in pre-coding, welcome menu resets `design_messy_cwd`.
-- Bump to `1.4.0`, retroactively covering `1.3.10`'s dr dependency-check flow and Ruff 0.16.0 reformat, whose version bump was never given a matching CHANGELOG entry.
 
 ## [1.3.9] - 2026-07-22
 
