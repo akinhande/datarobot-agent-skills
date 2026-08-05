@@ -382,6 +382,9 @@ append to `eval_report.md`.
 Present passed/total, unresolved, exhausted, and readiness to the user. If `ready: false`, say so
 explicitly before offering next steps.
 
+For each exhausted scenario, immediately after the pass/fail summary line, add one line per scenario:
+> "⚠ [scenario_name] couldn't be resolved after [N] attempts — this needs your attention before deploying."
+
 Then read `eval_report.md` and present a per-track breakdown. For each track (attack, behavior,
 persistence), list each scenario with one line: what it tested, whether it passed initially or
 needed a fix, and how many turns it ran.
