@@ -407,9 +407,9 @@ What would you like to do next?
 
 ## Error Handling
 
-**Step 2 generator failure** — `finalize` prints `role:<role> validation failed: <reason>` for
-each invalid output. Retry that generator once with `--rejection-note "<reason>"` and rerun
-`finalize`. If it still fails, surface the error and stop.
+**Step 2 generator failure** — if the worker exits non-zero, or `finalize` prints
+`role:<role> validation failed: <reason>`, retry that generator once with a different `<model>`
+from `dr opencode models` and rerun `finalize`. If it still fails, surface the error and stop.
 
 **Step 4 rerun worker failure** — if a runner/fixture/evaluator worker exits non-zero, mark the
 scenario failed:
