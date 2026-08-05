@@ -238,7 +238,10 @@ def _drive_scenario(
         # instead of the JSON envelope): retry once, then fall back for fixtures.
         ok = invoke()
         if not ok:
-            ok = invoke("prior attempt did not return the required JSON object")
+            ok = invoke(
+                "do not call any tools, especially the skill tool; "
+                "emit only the raw JSON object"
+            )
         if not ok and not fixture_fallback():
             _fail(run_dir, "worker subprocess failed")
             return "error"

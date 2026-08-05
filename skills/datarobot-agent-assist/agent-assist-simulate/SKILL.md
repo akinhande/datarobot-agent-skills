@@ -78,8 +78,9 @@ Keep the question to one sentence. Save to `user_context.txt` if provided. Skip 
 **Q4 — Evaluation mode:** Ask:
 > "How should results be evaluated? Standard gives a simple pass/fail. Scored rates each result by severity: low, medium, high, or critical. Default: standard."
 
-**Q5 — Model:** Run `dr opencode models` and present up to ten as a numbered list, with
-"Other — enter a model ID" as the last option. Store the choice as `<model>`.
+**Q5 — Model:** Run `dr opencode models`. Recommend the strongest available models from the
+catalog. Show up to 5 as a numbered list. After the list, ask: "Want to see more models from
+DataRobot LLM Gateway?" If yes, show more from the catalog. Store the choice as `<model>`.
 
 **Q6 — Selective tool execution (optional):** Read the tool definitions in `agent_spec.md` and
 identify any that appear to be read-only — no writes, no side effects, names like `get_`, `list_`,
@@ -380,6 +381,9 @@ append to `eval_report.md`.
 Present passed/total, unresolved, exhausted, and readiness to the user. If `ready: false`, say so
 explicitly before offering next steps.
 
+For each exhausted scenario, immediately after the pass/fail summary line, add one line per scenario:
+> "⚠ [scenario_name] couldn't be resolved after [N] attempts — this needs your attention before deploying."
+
 Then read `eval_report.md` and present a per-track breakdown. For each track (attack, behavior,
 persistence), list each scenario with one line: what it tested, whether it passed initially or
 needed a fix, and how many turns it ran.
@@ -403,9 +407,15 @@ What would you like to do next?
 
 ## Error Handling
 
-**Step 2 generator failure** — `finalize` prints `role:<role> validation failed: <reason>` for
-each invalid output. Retry that generator once with `--rejection-note "<reason>"` and rerun
-`finalize`. If it still fails, surface the error and stop.
+**Step 2 generator failure — worker exited non-zero (`response extraction failed`)** — the worker
+replied with prose instead of JSON. Retry that generator once with a `--rejection-note` forbidding
+tool calls (including the built-in `skill` tool) and meta-commentary. If it still fails, retry once
+with a different top-tier `<model>` (e.g. `claude-opus-4-8`) and tell the user which track used it.
+If that fails, surface the error and stop.
+
+**Step 2 generator failure — `finalize` rejected the content** — `finalize` prints
+`role:<role> validation failed: <reason>`. Retry that generator once with
+`--rejection-note "<reason>"` and rerun `finalize`. If it still fails, surface it and stop.
 
 **Step 4 rerun worker failure** — if a runner/fixture/evaluator worker exits non-zero, mark the
 scenario failed:

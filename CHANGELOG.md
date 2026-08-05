@@ -11,6 +11,11 @@ Each entry should be prefixed with the affected skill folder name (for example,
 
 ## [Unreleased]
 
+## [1.4.3] - 2026-08-05
+
+### Changed
+- `datarobot-agent-assist-simulate`: Refine UX for swarm simulation.
+
 ## [1.4.2] - 2026-08-04
 
 - `datarobot-model-training`: Create/associate a `dr.UseCase` when creating datasets and projects, so projects aren't orphaned in the DataRobot UI.

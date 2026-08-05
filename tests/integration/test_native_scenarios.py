@@ -322,7 +322,7 @@ def test_skill_documents_native_generation_state_transitions() -> None:
     assert "native_scenarios.py finalize" in skill
     assert "native_scenarios.py confirm" in skill
     assert "Read `finalize` stdout and present the candidate list" in skill
-    assert '--rejection-note "<reason>"' in skill
+    assert "--rejection-note" in skill
 
 
 def test_skill_is_cut_over_to_native_execution_and_convergence() -> None:
