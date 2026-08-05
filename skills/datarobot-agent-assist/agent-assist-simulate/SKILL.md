@@ -407,9 +407,15 @@ What would you like to do next?
 
 ## Error Handling
 
-**Step 2 generator failure** — if the worker exits non-zero, or `finalize` prints
-`role:<role> validation failed: <reason>`, retry that generator once with a different `<model>`
-from `dr opencode models` and rerun `finalize`. If it still fails, surface the error and stop.
+**Step 2 generator failure — worker exited non-zero (`response extraction failed`)** — the worker
+replied with prose instead of JSON. Retry that generator once with a `--rejection-note` forbidding
+tool calls (including the built-in `skill` tool) and meta-commentary. If it still fails, retry once
+with a different top-tier `<model>` (e.g. `claude-opus-4-8`) and tell the user which track used it.
+If that fails, surface the error and stop.
+
+**Step 2 generator failure — `finalize` rejected the content** — `finalize` prints
+`role:<role> validation failed: <reason>`. Retry that generator once with
+`--rejection-note "<reason>"` and rerun `finalize`. If it still fails, surface it and stop.
 
 **Step 4 rerun worker failure** — if a runner/fixture/evaluator worker exits non-zero, mark the
 scenario failed:
