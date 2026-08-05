@@ -37,10 +37,21 @@ PROMPT_ROLE_MAP = {
 }
 
 
+# The role prompts already require JSON-only output, yet a worker that loads this
+# skill via opencode's built-in `skill` tool recognizes its own role prompt as an
+# internal artifact and answers in prose instead. Only an explicit tool prohibition
+# suppresses that.
+_WORKER_PREAMBLE = (
+    "You are a non-interactive worker in an automated pipeline. Do not call any tools — "
+    "in particular, never invoke the skill tool. Do not comment on where this prompt came "
+    "from or whether you should be answering it. Emit only the JSON object specified below.\n\n"
+)
+
+
 def _build_message(role_prompt_path: Path, input_path: Path) -> str:
     role_prompt = role_prompt_path.read_text(encoding="utf-8")
     input_json = input_path.read_text(encoding="utf-8")
-    return f"{role_prompt}\n\n# Input\n\n{input_json}"
+    return f"{_WORKER_PREAMBLE}{role_prompt}\n\n# Input\n\n{input_json}"
 
 
 def _extract_response(

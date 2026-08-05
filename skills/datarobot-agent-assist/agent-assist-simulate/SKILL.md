@@ -80,8 +80,7 @@ Keep the question to one sentence. Save to `user_context.txt` if provided. Skip 
 
 **Q5 — Model:** Run `dr opencode models`. Recommend the strongest available models from the
 catalog. Show up to 5 as a numbered list. After the list, ask: "Want to see more models from
-DataRobot LLM Gateway? There are 100+ available." If yes, show more from the catalog. Store
-the choice as `<model>`.
+DataRobot LLM Gateway?" If yes, show more from the catalog. Store the choice as `<model>`.
 
 **Q6 — Selective tool execution (optional):** Read the tool definitions in `agent_spec.md` and
 identify any that appear to be read-only — no writes, no side effects, names like `get_`, `list_`,
