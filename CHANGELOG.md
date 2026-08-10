@@ -22,6 +22,7 @@ Each entry should be prefixed with the affected skill folder name (for example,
 - `datarobot-agent-assist`: `list_llm_models.py` closes stdin on the `dr` subprocess, so a credential prompt fails immediately rather than waiting out the timeout, and it names the requested instance alongside the CLI's log lines, making visible the case where the CLI ignored the passed credentials and listed a different instance.
 - `datarobot-agent-assist`: Deployment labels are collapsed to one pipe-free line when rendering the model table; an embedded newline in user-authored label text split a row apart.
 - `datarobot-agent-assist`: `SKILL.md` documented `list_llm_models.py` without its required `--target-dir`, and its Helper Scripts section referenced an undefined `<scripts_dir>` placeholder instead of the `<skill_scripts_dir>` the skill resolves. Both made the documented invocations dead instructions.
+- `datarobot-agent-assist`: `ensure_env_file` printed its progress line and the `dr dotenv setup` output to stdout, so `list_llm_models.py --json` produced unparseable output on a target directory with no `.env`. Both now go to stderr.
 
 ## [1.4.3] - 2026-08-05
 
