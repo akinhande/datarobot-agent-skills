@@ -60,6 +60,8 @@ python <skill_scripts_dir>/setup_template.py \
 
 That writes `LLM_DEPLOYMENT_ID`, `INFRA_ENABLE_LLM=deployed_llm.py`, and `USE_DATAROBOT_LLM_GATEWAY=0` into `.env`, which is what makes the template route to the deployment. Passing the `datarobot-deployed-llm` placeholder as `--llm-model` **without** an id is refused: the template would stay on its gateway configuration and fail much later at `pulumi up` with `Model 'datarobot-deployed-llm' not found in catalog`.
 
+On the deployed path the deployment id is the only thing that selects the model. `dr dotenv setup` rebuilds `.env` from the template's `.datarobot/cli/llm.yml`, whose deployed-LLM group does not include `LLM_DEFAULT_MODEL`, so that key is dropped and the template falls back to its own `datarobot/datarobot-deployed-llm` placeholder. Routing is unaffected; a real model name passed as `--llm-model` alongside an id does not survive.
+
 ### select_framework.py
 
 Saves the chosen agentic framework to `.datarobot/answers/agent-agent.yml` (`agent_template_framework`). Preserves all other fields in the file.

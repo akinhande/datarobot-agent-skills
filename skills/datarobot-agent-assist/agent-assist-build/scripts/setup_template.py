@@ -292,12 +292,15 @@ def setup_and_run(
             return 1
 
         if not is_deployed_llm_model(llm_default_model):
-            # Supported on purpose: the deployment routes by id and treats the model
-            # string as a label, and the template documents naming the deployment's
-            # real model so datarobot-genai can match its reasoning parameters.
+            # Allowed, not an error: the deployment routes by id and treats the model
+            # string as a label the endpoint ignores. Do not promise the label
+            # survives, though. 'dr dotenv setup' rebuilds .env from
+            # .datarobot/cli/llm.yml, whose deployed_llm group has no
+            # LLM_DEFAULT_MODEL, so it drops the key and the template falls back to
+            # its own placeholder.
             print(
-                f'Note: routing to the deployment; "{llm_default_model}" is kept as '
-                "the model label."
+                f'Note: the deployment routes by id, so "{llm_default_model}" acts '
+                "only as a label and is not persisted by 'dr dotenv setup'."
             )
     elif is_deployed_llm_model(llm_default_model):
         # The likelier slip, since agent_spec.md always carries `model` while
