@@ -40,6 +40,7 @@ from list_llm_models import (
     SOURCE_DEPLOYED,
     SOURCE_GATEWAY,
     fetch_llm_models,
+    is_deployed_llm_model,
     normalize_gateway_model,
 )
 
@@ -223,7 +224,12 @@ class ModelCatalog:
         self._by_api_model_lower: dict[str, LLMModel] = {}
         for entry in self._entries:
             self._by_name_lower[entry["name"].lower()] = entry
-            self._by_api_model_lower[entry["api_model"].lower()] = entry
+            # Every deployed entry shares one api_model placeholder, so indexing them
+            # here would make the key resolve to whichever deployment happened to be
+            # last and call it an exact match. A deployment is addressed by its id
+            # (see _by_id) or announced as a substitution, never silently guessed.
+            if entry["source"] != SOURCE_DEPLOYED:
+                self._by_api_model_lower[entry["api_model"].lower()] = entry
             self._by_id[entry["id"]] = entry
 
     def _find_exact(self, requested: str) -> LLMModel | None:
@@ -309,6 +315,11 @@ class ModelCatalog:
         inferred_source = prefer_source
         if inferred_source is None and exact is not None:
             inferred_source = exact["source"]
+        if inferred_source is None and is_deployed_llm_model(requested):
+            # The spec named the deployed-LLM placeholder without an
+            # llm_deployment_id to pin it, so substitute a deployment over a gateway
+            # model. Reported as a substitution, since which deployment is a guess.
+            inferred_source = SOURCE_DEPLOYED
 
         return (
             self._fallback(
@@ -456,6 +467,11 @@ EXTRACT_TOOL = {
             "type": "object",
             "properties": {
                 "model": {"type": "string"},
+                "llm_deployment_id": {
+                    "type": "string",
+                    "description": "Deployment id from the spec's optional "
+                    "llm_deployment_id field; empty for LLM Gateway models",
+                },
                 "system_prompt": {"type": "string"},
                 "tools": {
                     "type": "array",
@@ -746,9 +762,18 @@ def cmd_init(spec_path: str, session_dir: str, target_dir: Path) -> None:
         sys.exit(1)
     spec = json.loads(tool_calls[0]["function"]["arguments"])
     requested_model = str(spec["model"]).strip()
-    agent_model, model_substituted = catalog.pick_available(requested_model)
+    # A deployed LLM is identified by its deployment id, not by `model` — every
+    # deployment shares one placeholder there. Resolving on the id keeps the
+    # rehearsal on the deployment the spec actually chose.
+    requested_deployment_id = str(spec.get("llm_deployment_id") or "").strip()
+    if requested_deployment_id:
+        agent_model, model_substituted = catalog.pick_available(
+            requested_deployment_id, prefer_source=SOURCE_DEPLOYED
+        )
+    else:
+        agent_model, model_substituted = catalog.pick_available(requested_model)
     if model_substituted:
-        print_model_chosen(requested_model, agent_model)
+        print_model_chosen(requested_deployment_id or requested_model, agent_model)
     system_prompt = spec["system_prompt"]
     tools = spec.get("tools", [])
     examples = spec.get("examples", [])
