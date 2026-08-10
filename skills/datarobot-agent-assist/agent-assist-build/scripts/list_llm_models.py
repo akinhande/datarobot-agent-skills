@@ -60,8 +60,13 @@ def is_deployed_llm_model(model: str) -> bool:
     and never an individual deployment. Listed bare here while the template
     canonicalizes to the ``datarobot/``-prefixed form, so both spellings match.
     Shared with setup_template.py and rehearsal.py, which both branch on it.
+
+    Case-insensitive on purpose. The value reaches here from ``agent_spec.md`` and
+    from the rehearsal's spec extraction, both LLM-authored, so a capitalized
+    spelling is a normal input rather than a malformed one. Matching exactly would
+    let it past the guard in setup_template.py and into a late 'pulumi up' failure.
     """
-    return normalize_gateway_model(model.strip()) == DEPLOYED_LLM_MODEL
+    return normalize_gateway_model(model.strip().lower()) == DEPLOYED_LLM_MODEL
 
 
 def _as_int(value: object, default: int = 0) -> int:
@@ -137,6 +142,10 @@ def _map_cli_entry(entry: dict[str, object]) -> LLMModel | None:
         # agent_spec.md, matching what the REST mappers already do.
         if not deployment_id:
             return None
+        # The two are the same value from the CLI. Falling back keeps the entry
+        # findable by id, which is what every lookup in rehearsal.py resolves on.
+        model_id = model_id or deployment_id
+        name = name or model_id
         api_model = DEPLOYED_LLM_MODEL
         provider = ""
     else:
@@ -293,6 +302,16 @@ def fetch_llm_models(endpoint: str, api_token: str) -> list[LLMModel]:
         models, cli_warnings = _fetch_llm_models_via_cli(endpoint, api_token)
         warnings.extend(cli_warnings)
         if models:
+            if not any(m["source"] == SOURCE_DEPLOYED for m in models):
+                # `dr llm-gateway list` only reports deployments from v0.2.79, while
+                # the agent template still accepts 0.2.77. A non-empty gateway alone
+                # satisfies the branch above, so without this top-up a deployed LLM is
+                # invisible on a supported older CLI: the listing looks healthy and
+                # the deployed source silently does not exist.
+                try:
+                    models = models + _fetch_deployed_models_rest(endpoint, api_token)
+                except RuntimeError as e:
+                    warnings.append(f"could not list deployed LLMs: {e}")
             for warning in warnings:
                 print(f"Warning: {warning}", file=sys.stderr)
             return models
