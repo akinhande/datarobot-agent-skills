@@ -22,6 +22,7 @@ import contextlib
 import functools
 import json
 import os
+import re
 import sys
 import tempfile
 import threading
@@ -147,6 +148,28 @@ def _model_slug(model: str) -> str:
     """Normalized trailing segment for fuzzy gateway catalog matching."""
     slug = normalize_gateway_model(model).split("/")[-1].lower()
     return slug.replace(".", "-").replace("_", "-")
+
+
+# Anchored to the start of a line so a commented-out key does not match, and
+# tolerant of the fence the spec is usually written inside.
+SPEC_DEPLOYMENT_ID_RE = re.compile(
+    r"^\s*llm_deployment_id\s*:\s*[\"']?([A-Za-z0-9_-]+)[\"']?\s*$", re.MULTILINE
+)
+
+
+def _spec_deployment_id(spec_text: str) -> str:
+    """Read `llm_deployment_id` straight out of the spec file.
+
+    Deliberately not taken from the model's extraction. It is an opaque id, the
+    kind of value a tool call is most likely to drop or garble, and the schema
+    cannot make it mandatory without inviting a fabricated id on a gateway spec.
+    Either way the rehearsal would silently run against a deployment the user did
+    not choose. Reading the literal keeps it exact, and a spec that omits it falls
+    through to the announced-substitution path.
+    """
+    match = SPEC_DEPLOYMENT_ID_RE.search(spec_text)
+
+    return match.group(1) if match else ""
 
 
 @dataclass(frozen=True)
@@ -490,11 +513,6 @@ EXTRACT_TOOL = {
             "type": "object",
             "properties": {
                 "model": {"type": "string"},
-                "llm_deployment_id": {
-                    "type": "string",
-                    "description": "Deployment id from the spec's optional "
-                    "llm_deployment_id field; empty for LLM Gateway models",
-                },
                 "system_prompt": {"type": "string"},
                 "tools": {
                     "type": "array",
@@ -785,10 +803,11 @@ def cmd_init(spec_path: str, session_dir: str, target_dir: Path) -> None:
         sys.exit(1)
     spec = json.loads(tool_calls[0]["function"]["arguments"])
     requested_model = str(spec["model"]).strip()
-    # A deployed LLM is identified by its deployment id, not by `model` — every
+    # A deployed LLM is identified by its deployment id, not by `model`: every
     # deployment shares one placeholder there. Resolving on the id keeps the
-    # rehearsal on the deployment the spec actually chose.
-    requested_deployment_id = str(spec.get("llm_deployment_id") or "").strip()
+    # rehearsal on the deployment the spec actually chose. Read from the spec text
+    # rather than the extraction, see _spec_deployment_id.
+    requested_deployment_id = _spec_deployment_id(content)
     if requested_deployment_id:
         agent_model, model_substituted = catalog.pick_available(
             requested_deployment_id, prefer_source=SOURCE_DEPLOYED
