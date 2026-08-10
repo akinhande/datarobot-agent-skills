@@ -53,6 +53,17 @@ def normalize_gateway_model(model: str) -> str:
     return model
 
 
+def is_deployed_llm_model(model: str) -> bool:
+    """Whether a model name is the shared DataRobot-deployed-LLM placeholder.
+
+    Every deployment reports this same name, so it identifies the deployed source
+    and never an individual deployment. Listed bare here while the template
+    canonicalizes to the ``datarobot/``-prefixed form, so both spellings match.
+    Shared with setup_template.py and rehearsal.py, which both branch on it.
+    """
+    return normalize_gateway_model(model.strip()) == DEPLOYED_LLM_MODEL
+
+
 def _as_int(value: object, default: int = 0) -> int:
     if isinstance(value, bool):
         return int(value)
@@ -115,16 +126,23 @@ def _map_deployed_entry(entry: dict[str, object]) -> LLMModel | None:
     return mapped
 
 
-def _map_cli_entry(entry: dict[str, object]) -> LLMModel:
+def _map_cli_entry(entry: dict[str, object]) -> LLMModel | None:
     source = str(entry.get("source") or SOURCE_GATEWAY)
     deployment_id = str(entry.get("deployment_id") or "")
     model_id = str(entry.get("id") or "")
     name = str(entry.get("name") or model_id)
     if source == SOURCE_DEPLOYED:
+        # A deployment is addressed only by its id, so an entry without one cannot be
+        # selected or routed to. Dropping it here keeps an unusable choice out of
+        # agent_spec.md, matching what the REST mappers already do.
+        if not deployment_id:
+            return None
         api_model = DEPLOYED_LLM_MODEL
         provider = ""
     else:
         api_model = normalize_gateway_model(str(entry.get("model") or model_id))
+        if not api_model:
+            return None
         provider = str(entry.get("provider") or "Unknown")
     mapped: LLMModel = {
         "id": model_id,
@@ -206,6 +224,7 @@ def _fetch_llm_models_via_cli(
     env = os.environ.copy()
     env["DATAROBOT_ENDPOINT"] = endpoint
     env["DATAROBOT_API_TOKEN"] = api_token
+    env["DATAROBOT_CLI_NON_INTERACTIVE"] = "True"
     try:
         result = subprocess.run(
             ["dr", "llm-gateway", "list", "--output-format", "json"],
@@ -214,6 +233,10 @@ def _fetch_llm_models_via_cli(
             text=True,
             env=env,
             timeout=60,
+            # The CLI drops into an interactive login when it has no usable
+            # credentials. Closing stdin is what turns that into a fast failure
+            # rather than a wait for the timeout on an invisible prompt.
+            stdin=subprocess.DEVNULL,
         )
     except FileNotFoundError as e:
         raise RuntimeError("dr CLI not found") from e
@@ -222,6 +245,12 @@ def _fetch_llm_models_via_cli(
 
     warnings: list[str] = []
     if result.stderr.strip():
+        # Name the instance that was asked for. The CLI honors the credentials above
+        # only once they verify and otherwise falls back to its own stored profile,
+        # so a stale project .env yields a listing from a different DataRobot
+        # instance. Its log lines name the host it actually queried; pairing them
+        # with the requested host is what makes that mismatch visible.
+        warnings.append(f"requested instance: {endpoint}")
         warnings.extend(
             line.strip() for line in result.stderr.splitlines() if line.strip()
         )
@@ -239,9 +268,14 @@ def _fetch_llm_models_via_cli(
     if not isinstance(llms, list):
         raise RuntimeError("Unexpected dr llm-gateway list JSON format")
 
-    return [
-        _map_cli_entry(entry) for entry in llms if isinstance(entry, dict)
-    ], warnings
+    models: list[LLMModel] = []
+    for entry in llms:
+        if not isinstance(entry, dict):
+            continue
+        mapped = _map_cli_entry(entry)
+        if mapped:
+            models.append(mapped)
+    return models, warnings
 
 
 def fetch_llm_models(endpoint: str, api_token: str) -> list[LLMModel]:
@@ -287,33 +321,48 @@ def fetch_llm_models(endpoint: str, api_token: str) -> list[LLMModel]:
     return models
 
 
+def _cell(value: str) -> str:
+    """Collapse a value to one pipe-free line so it cannot break a table row.
+
+    A deployment's label is user-authored free text, so it can carry the newline
+    that would split its row apart and the pipe that would fake a column break.
+    Display only: the JSON output and the model lookups in rehearsal.py keep the
+    values the CLI actually reported.
+    """
+    return " ".join(value.split()).replace("|", "/")
+
+
 def format_as_table(models: list[LLMModel]) -> str:
     """Format models as a readable table."""
     if not models:
         return "No models available"
 
-    id_width = max(len(m["id"]) for m in models)
-    id_width = max(id_width, len("ID"))
-    name_width = max(len(m["name"]) for m in models)
-    name_width = max(name_width, len("Name"))
-    source_width = max(len(m["source"]) for m in models)
-    source_width = max(source_width, len("Source"))
-    provider_width = max(len(m["provider"] or "-") for m in models)
-    provider_width = max(provider_width, len("Provider"))
-    context_width = max(len(str(m["context_size"] or "-")) for m in models)
-    context_width = max(context_width, len("Context"))
+    rows = [
+        (
+            _cell(m["id"]),
+            _cell(m["name"]),
+            _cell(m["source"]),
+            _cell(m["provider"]) or "-",
+            str(m["context_size"]) if m["context_size"] > 0 else "-",
+        )
+        for m in models
+    ]
+
+    id_width = max(len("ID"), *(len(r[0]) for r in rows))
+    name_width = max(len("Name"), *(len(r[1]) for r in rows))
+    source_width = max(len("Source"), *(len(r[2]) for r in rows))
+    provider_width = max(len("Provider"), *(len(r[3]) for r in rows))
+    context_width = max(len("Context"), *(len(r[4]) for r in rows))
 
     header = (
         f"{'ID':<{id_width}} | {'Name':<{name_width}} | {'Source':<{source_width}} | "
         f"{'Provider':<{provider_width}} | {'Context':>{context_width}}"
     )
     lines = [header, "-" * len(header)]
-    for m in models:
-        provider = m["provider"] or "-"
-        context = str(m["context_size"]) if m["context_size"] > 0 else "-"
+    for model_id, name, source, provider, context in rows:
         lines.append(
-            f"{m['id']:<{id_width}} | {m['name']:<{name_width}} | "
-            f"{m['source']:<{source_width}} | {provider:<{provider_width}} | "
+            f"{model_id:<{id_width}} | {name:<{name_width}} | "
+            f"{source:<{source_width}} | {provider:<{provider_width}} | "
             f"{context:>{context_width}}"
         )
     return "\n".join(lines)
