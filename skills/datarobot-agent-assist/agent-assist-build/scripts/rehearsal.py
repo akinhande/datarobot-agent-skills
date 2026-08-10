@@ -225,12 +225,14 @@ class ModelCatalog:
         # A key that two entries share stops identifying either one. Deployment
         # labels are user-authored and can repeat, so collapse those keys instead of
         # letting the last entry indexed win and be reported as an exact match.
-        ambiguous_names: set[str] = set()
+        ambiguous_names: dict[str, set[str]] = {}
         for entry in self._entries:
             name_key = entry["name"].lower()
             claimed = self._by_name_lower.get(name_key)
             if claimed is not None and claimed["id"] != entry["id"]:
-                ambiguous_names.add(name_key)
+                ambiguous_names.setdefault(name_key, {claimed["source"]}).add(
+                    entry["source"]
+                )
             else:
                 self._by_name_lower[name_key] = entry
             # Every deployed entry shares one api_model placeholder, so it names the
@@ -242,6 +244,14 @@ class ModelCatalog:
             self._by_id[entry["id"]] = entry
         for name_key in ambiguous_names:
             del self._by_name_lower[name_key]
+        # A collapsed key still says which pool it came from when every entry that
+        # claimed it shared one source. Without this the fallback drops to the
+        # whole-catalog pool, which is gateway-first, so an ambiguity purely among
+        # deployments would substitute a gateway model.
+        self._ambiguous_name_source: dict[str, str | None] = {
+            key: next(iter(sources)) if len(sources) == 1 else None
+            for key, sources in ambiguous_names.items()
+        }
 
     def _find_exact(self, requested: str) -> LLMModel | None:
         if requested in self._by_id:
@@ -326,6 +336,8 @@ class ModelCatalog:
         inferred_source = prefer_source
         if inferred_source is None and exact is not None:
             inferred_source = exact["source"]
+        if inferred_source is None:
+            inferred_source = self._ambiguous_name_source.get(requested.lower())
         if inferred_source is None and is_deployed_llm_model(requested):
             # The spec named the deployed-LLM placeholder without an
             # llm_deployment_id to pin it, so substitute a deployment over a gateway
