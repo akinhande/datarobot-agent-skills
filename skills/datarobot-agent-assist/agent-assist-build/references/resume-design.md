@@ -31,9 +31,12 @@ Canonical definition used by [Bootstrap step 2](pre-coding-checklist.md#bootstra
 | Field | Requirement |
 |-------|-------------|
 | `model` | Set (non-empty) |
+| `llm_deployment_id` | Set **only if** `model` is the `datarobot-deployed-llm` placeholder; otherwise absent or empty |
 | `system_prompt` | Non-empty |
 | `frontend.type` | Set |
 | `tools` | Key **present** in YAML — either one or more tool entries, or `tools: []` |
+
+**`llm_deployment_id` rule:** the placeholder model is shared by every DataRobot-deployed LLM, so on its own it does not name one. A spec carrying it without an id is **not** complete — route to [Model Selection](../SKILL.md#model-selection) to re-pick the deployment. Template setup refuses that pair anyway; catching it here keeps the failure in the design phase.
 
 **`tools` rules:**
 

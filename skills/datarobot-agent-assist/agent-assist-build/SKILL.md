@@ -78,13 +78,18 @@ If any helper script exits with a 401 / UNAUTHORIZED error: run `dr auth login` 
 - To check available models: Run the helper script:
    ```
    python <skill_scripts_dir>/list_llm_models.py \
-     --json
+     --json \
+     --target-dir <target_dir>
    ```
 
   **CRITICAL**: In case the script fails due to any reason, do **not** proceed. Instead, return the error message to the user and ask how they want to proceed.
 
+  Each entry carries a `source`: `gateway` for an LLM Gateway catalog model, `deployed` for an existing DataRobot text-generation deployment.
+
 - Recommend a `gpt-5`, `claude-4-5`, or `gemini-2.5` model from the list unless the user specifies cost or other constraints.
 - If none of those preferred families appear in the catalog, pick the highest-capability available model by name — prefer ones containing `large`, `pro`, `opus`, or `sonnet` over `mini`, `haiku`, or `flash`.
+- **If no `gateway` entry exists at all**, the LLM Gateway is disabled or empty on this instance — normal for an on-prem install. Recommend a `deployed` entry instead, identified by its `name` (the deployment label), and tell the user that is what you are doing and why.
+- When the user picks a `deployed` entry, record **both** `model` (its `api_model`, the shared `datarobot-deployed-llm` placeholder) and `llm_deployment_id` (its `deployment_id`) in `agent_spec.md`. The placeholder is identical for every deployment, so the id is the only field that says which one.
 - Only display the full model catalog when the user **explicitly** asks to browse models.
 - If the user's desired model is unavailable, suggest starting with an available one and updating after implementation.
 
@@ -227,7 +232,7 @@ Then offer to implement any changes to `agent_spec.md`.
 
 Verify `agent_spec.md` contains at minimum:
 
-- `model` — a valid LLM Gateway model ID
+- `model` — a valid LLM Gateway model ID, or the `datarobot-deployed-llm` placeholder paired with `llm_deployment_id`
 - `system_prompt` — non-empty
 - `tools` — at least one tool defined (or explicit confirmation from the user that no tools are needed)
 - `frontend.type` — set
@@ -274,6 +279,14 @@ If `agent_spec.md` does not exist, inform the user and offer to run the Design p
      --target-dir .
    ```
 
+   If the spec also has `llm_deployment_id`, pass it — the model placeholder alone cannot route to a deployment, and the script stops if it is missing:
+   ```
+   python <skill_scripts_dir>/setup_template.py \
+     --llm-model <model-name> \
+     --llm-deployment-id <deployment-id> \
+     --target-dir .
+   ```
+
    **CRITICAL**: In case any of the above scripts fail due to any reason, do **not** proceed with coding. Instead, return the error message to the user and ask how they want to proceed.
 
    g. **Re-read `AGENTS.md`** now that the template is ready.
@@ -312,12 +325,13 @@ The following are the examples of helper scripts used in the skill. They are loc
 
 ### list_llm_models.py
 
-Lists available LLM models from DataRobot LLM Gateway.
+Lists the LLMs available to an agent.
 
-Fetches and displays active models from the DataRobot LLM Gateway catalog:
+Fetches and displays active LLM Gateway catalog models and DataRobot text-generation deployments, each tagged with its `source`:
 ```bash
-python <scripts_dir>/list_llm_models.py \
-  --json
+python <skill_scripts_dir>/list_llm_models.py \
+  --json \
+  --target-dir <target_dir>
 ```
 
 Requires env vars: `DATAROBOT_API_TOKEN`, `DATAROBOT_ENDPOINT`
@@ -328,12 +342,12 @@ Clones the DataRobot agent application template repository.
 
 Clones the template to the current directory (repository URL and branch are hardcoded):
 ```bash
-python <scripts_dir>/clone_template.py
+python <skill_scripts_dir>/clone_template.py
 ```
 
 Clone to a specific directory:
 ```bash
-python <scripts_dir>/clone_template.py \
+python <skill_scripts_dir>/clone_template.py \
   --target-dir ./my-project
 ```
 
@@ -342,10 +356,12 @@ python <scripts_dir>/clone_template.py \
 Sets up a template repository for initializing a new agent project.
 
 ```bash
-python <scripts_dir>/setup_template.py \
+python <skill_scripts_dir>/setup_template.py \
   --llm-model <model-name> \
   --target-dir .
 ```
+
+Add `--llm-deployment-id <deployment-id>` for a DataRobot-deployed LLM, so the template routes to the deployment instead of the gateway.
 
 ### select_framework.py
 
@@ -353,7 +369,7 @@ Saves the chosen agentic framework to `.datarobot/answers/agent-agent.yml`
 (field `agent_template_framework`). Preserves all other fields in the file.
 
 ```bash
-python <scripts_dir>/select_framework.py \
+python <skill_scripts_dir>/select_framework.py \
   --framework langgraph \
   --target-dir .
 ```
@@ -375,7 +391,8 @@ Valid `--framework` values: `langgraph`, `crewai`, `llamaindex`, `nat`, `base`
 Write specs in YAML to `agent_spec.md` in the working directory. Fields are optional when the spec is still evolving.
 
 ```yaml
-model: "anthropic/claude-sonnet-4-5-20250929"   # DataRobot LLM Gateway model ID
+model: "anthropic/claude-sonnet-4-5-20250929"   # LLM Gateway model ID, or datarobot-deployed-llm
+llm_deployment_id: ""                           # required only for a DataRobot-deployed LLM
 system_prompt: "Your agent's instructions..."
 tools:
   - function_name: tool_name
