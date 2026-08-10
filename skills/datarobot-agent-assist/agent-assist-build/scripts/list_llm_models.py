@@ -250,7 +250,10 @@ def _fetch_llm_models_via_cli(
         # so a stale project .env yields a listing from a different DataRobot
         # instance. Its log lines name the host it actually queried; pairing them
         # with the requested host is what makes that mismatch visible.
-        warnings.append(f"requested instance: {endpoint}")
+        warnings.append(
+            f"listing requested from {endpoint}. The CLI log lines below name the "
+            "instance actually queried"
+        )
         warnings.extend(
             line.strip() for line in result.stderr.splitlines() if line.strip()
         )

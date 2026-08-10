@@ -37,7 +37,7 @@ python <skill_scripts_dir>/list_llm_models.py \
 
 Every `deployed` entry reports the same `api_model` placeholder, so `deployment_id` is what identifies one; `name` is its deployment label.
 
-If the listing looks like it came from the wrong DataRobot instance, compare the `requested instance:` line against the host in the CLI's own log lines that follow it. The CLI honors the credentials passed to it only once they verify, and otherwise falls back to its stored profile, so a stale project `.env` yields another instance's catalog rather than an error.
+If the listing looks like it came from the wrong DataRobot instance, compare the `listing requested from` line against the host named in the CLI log lines that follow it. The CLI honors the credentials passed to it only once they verify, and otherwise falls back to its stored profile, so a stale project `.env` yields another instance's catalog rather than an error.
 
 ### setup_template.py
 

@@ -222,15 +222,26 @@ class ModelCatalog:
         self._by_id = {m["id"]: m for m in self._entries}
         self._by_name_lower: dict[str, LLMModel] = {}
         self._by_api_model_lower: dict[str, LLMModel] = {}
+        # A key that two entries share stops identifying either one. Deployment
+        # labels are user-authored and can repeat, so collapse those keys instead of
+        # letting the last entry indexed win and be reported as an exact match.
+        ambiguous_names: set[str] = set()
         for entry in self._entries:
-            self._by_name_lower[entry["name"].lower()] = entry
-            # Every deployed entry shares one api_model placeholder, so indexing them
-            # here would make the key resolve to whichever deployment happened to be
-            # last and call it an exact match. A deployment is addressed by its id
-            # (see _by_id) or announced as a substitution, never silently guessed.
+            name_key = entry["name"].lower()
+            claimed = self._by_name_lower.get(name_key)
+            if claimed is not None and claimed["id"] != entry["id"]:
+                ambiguous_names.add(name_key)
+            else:
+                self._by_name_lower[name_key] = entry
+            # Every deployed entry shares one api_model placeholder, so it names the
+            # source rather than a deployment and can never be an exact match. A
+            # deployment is addressed by its id (see _by_id) or announced as a
+            # substitution, never silently guessed.
             if entry["source"] != SOURCE_DEPLOYED:
                 self._by_api_model_lower[entry["api_model"].lower()] = entry
             self._by_id[entry["id"]] = entry
+        for name_key in ambiguous_names:
+            del self._by_name_lower[name_key]
 
     def _find_exact(self, requested: str) -> LLMModel | None:
         if requested in self._by_id:
