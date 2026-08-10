@@ -21,6 +21,7 @@ management and Pulumi configuration encryption.
 import argparse
 import base64
 import os
+import re
 import secrets
 import subprocess
 import sys
@@ -96,14 +97,14 @@ def create_env_file(
         with open(env_file, "w") as f:
             f.writelines(lines)
 
-        print(f'✓ Created .env file with LLM_DEFAULT_MODEL="{llm_default_model}"')
-
         if llm_deployment_id:
             print(
-                f"✓ Routed to DataRobot-deployed LLM {llm_deployment_id} "
-                f"(INFRA_ENABLE_LLM={DEPLOYED_LLM_CONFIGURATION}, "
+                f"✓ Created .env file routed to DataRobot-deployed LLM "
+                f"{llm_deployment_id} (INFRA_ENABLE_LLM={DEPLOYED_LLM_CONFIGURATION}, "
                 "USE_DATAROBOT_LLM_GATEWAY=0)"
             )
+        else:
+            print(f'✓ Created .env file with LLM_DEFAULT_MODEL="{llm_default_model}"')
 
         return True, f"Created {env_file}"
 
@@ -281,12 +282,13 @@ def setup_and_run(
     if llm_deployment_id:
         print(f"LLM deployment: {llm_deployment_id}")
 
-        # The id is written verbatim into .env, where whitespace or a quote would
-        # corrupt the line and leave the template reading a truncated deployment id.
-        if any(c.isspace() for c in llm_deployment_id) or '"' in llm_deployment_id:
+        # The id is written verbatim into a double-quoted .env line that the template's
+        # loader re-parses, so a quote, backslash or '$' corrupts it as surely as
+        # whitespace does. Allow only what a DataRobot id can contain.
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", llm_deployment_id):
             print(
-                f'Error: --llm-deployment-id "{llm_deployment_id}" contains '
-                "whitespace or a quote. Pass the deployment id on its own.",
+                f'Error: --llm-deployment-id "{llm_deployment_id}" is not a plain '
+                "identifier. Pass just the deployment id.",
                 file=sys.stderr,
             )
             return 1
