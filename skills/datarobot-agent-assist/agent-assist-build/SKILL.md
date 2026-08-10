@@ -84,13 +84,7 @@ If any helper script exits with a 401 / UNAUTHORIZED error: run `dr auth login` 
 
   **CRITICAL**: In case the script fails due to any reason, do **not** proceed. Instead, return the error message to the user and ask how they want to proceed.
 
-  Each entry carries a `source`: `gateway` for an LLM Gateway catalog model, `deployed` for an existing DataRobot text-generation deployment.
-
-- Recommend a `gpt-5`, `claude-4-5`, or `gemini-2.5` model from the list unless the user specifies cost or other constraints.
-- If none of those preferred families appear in the catalog, pick the highest-capability available model by name — prefer ones containing `large`, `pro`, `opus`, or `sonnet` over `mini`, `haiku`, or `flash`.
-- **If no `gateway` entry exists at all**, the LLM Gateway is disabled or empty on this instance — normal for an on-prem install. Recommend a `deployed` entry instead, identified by its `name` (the deployment label), and tell the user that is what you are doing and why.
-- When the user picks a `deployed` entry, record **both** `model` (its `api_model`, the shared `datarobot-deployed-llm` placeholder) and `llm_deployment_id` (its `deployment_id`) in `agent_spec.md`. The placeholder is identical for every deployment, so the id is the only field that says which one.
-- Only display the full model catalog when the user **explicitly** asks to browse models.
+- Read and follow [llm-selection.md](references/llm-selection.md) to pick from the two sources (`gateway` and `deployed`) and to record the choice in `agent_spec.md`.
 - If the user's desired model is unavailable, suggest starting with an available one and updating after implementation.
 
 ### Spec Display
