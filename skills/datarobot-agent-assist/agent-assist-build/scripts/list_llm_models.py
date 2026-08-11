@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -67,6 +68,22 @@ def is_deployed_llm_model(model: str) -> bool:
     let it past the guard in setup_template.py and into a late 'pulumi up' failure.
     """
     return normalize_gateway_model(model.strip().lower()) == DEPLOYED_LLM_MODEL
+
+
+# A DataRobot deployment id is a 24-character hex object id. Asserting the shape
+# rather than excluding known-bad values is what stops YAML scalars like `null`,
+# `true` or `no` from being read as ids, without needing a list of literals that
+# is always one entry short.
+DEPLOYMENT_ID_RE = re.compile(r"[0-9a-fA-F]{24}")
+
+
+def is_deployment_id(value: str) -> bool:
+    """Whether a string is shaped like a DataRobot deployment id.
+
+    Shared by rehearsal.py, which falls through to an announced substitution when
+    this fails, and setup_template.py, which refuses outright.
+    """
+    return DEPLOYMENT_ID_RE.fullmatch(value.strip()) is not None
 
 
 def _as_int(value: object, default: int = 0) -> int:

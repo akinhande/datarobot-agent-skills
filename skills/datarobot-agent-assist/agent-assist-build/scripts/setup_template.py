@@ -28,7 +28,7 @@ import sys
 from pathlib import Path
 
 from env_utils import read_env_variable
-from list_llm_models import is_deployed_llm_model
+from list_llm_models import is_deployed_llm_model, is_deployment_id
 
 # A DataRobot-deployed LLM is selected by deployment id, not by model name: the
 # template swaps in this Pulumi config and calls the deployment's chat endpoint
@@ -284,11 +284,24 @@ def setup_and_run(
 
         # The id is written verbatim into a double-quoted .env line that the template's
         # loader re-parses, so a quote, backslash or '$' corrupts it as surely as
-        # whitespace does. Allow only what a DataRobot id can contain.
+        # whitespace does.
         if not re.fullmatch(r"[A-Za-z0-9_-]+", llm_deployment_id):
             print(
                 f'Error: --llm-deployment-id "{llm_deployment_id}" is not a plain '
                 "identifier. Pass just the deployment id.",
+                file=sys.stderr,
+            )
+            return 1
+
+        # Separate from the check above: this one is about being the wrong value
+        # rather than an unwritable one. A spec that wrote `llm_deployment_id: null`
+        # yields the literal "null", which would otherwise route the template to a
+        # deployment that does not exist and fail at 'pulumi up'.
+        if not is_deployment_id(llm_deployment_id):
+            print(
+                f'Error: --llm-deployment-id "{llm_deployment_id}" is not a DataRobot '
+                "deployment id, which is 24 hex characters. Take it from the "
+                "deployment_id field of the model listing.",
                 file=sys.stderr,
             )
             return 1

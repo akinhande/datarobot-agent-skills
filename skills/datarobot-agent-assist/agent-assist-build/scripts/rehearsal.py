@@ -42,6 +42,7 @@ from list_llm_models import (
     SOURCE_GATEWAY,
     fetch_llm_models,
     is_deployed_llm_model,
+    is_deployment_id,
     normalize_gateway_model,
 )
 
@@ -171,8 +172,16 @@ def _spec_deployment_id(spec_text: str) -> str:
     through to the announced-substitution path.
     """
     match = SPEC_DEPLOYMENT_ID_RE.search(spec_text)
+    if not match:
+        return ""
 
-    return match.group(1) if match else ""
+    # Require the id shape rather than trusting whatever followed the colon. An
+    # unquoted YAML scalar like `null`, `true` or `no` is otherwise read as an id,
+    # and cmd_init prefers the id over `model`, so a gateway spec would resolve to
+    # a deployment. Anything unrecognized falls through to `model`.
+    value = match.group(1)
+
+    return value if is_deployment_id(value) else ""
 
 
 @dataclass(frozen=True)
