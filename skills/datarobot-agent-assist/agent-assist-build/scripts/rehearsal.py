@@ -151,9 +151,12 @@ def _model_slug(model: str) -> str:
 
 
 # Anchored to the start of a line so a commented-out key does not match, and
-# tolerant of the fence the spec is usually written inside.
+# tolerant of the fence the spec is usually written inside. The trailing comment
+# is optional but has to be allowed for: the schema template ships the field with
+# one, so filling the id in place keeps it.
 SPEC_DEPLOYMENT_ID_RE = re.compile(
-    r"^\s*llm_deployment_id\s*:\s*[\"']?([A-Za-z0-9_-]+)[\"']?\s*$", re.MULTILINE
+    r"^\s*llm_deployment_id\s*:\s*[\"']?([A-Za-z0-9_-]+)[\"']?\s*(?:#.*)?$",
+    re.MULTILINE,
 )
 
 
