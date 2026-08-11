@@ -70,11 +70,13 @@ def is_deployed_llm_model(model: str) -> bool:
     return normalize_gateway_model(model.strip().lower()) == DEPLOYED_LLM_MODEL
 
 
-# A DataRobot deployment id is a 24-character hex object id. Asserting the shape
-# rather than excluding known-bad values is what stops YAML scalars like `null`,
-# `true` or `no` from being read as ids, without needing a list of literals that
-# is always one entry short.
-DEPLOYMENT_ID_RE = re.compile(r"[0-9a-fA-F]{24}")
+# A DataRobot deployment id is a 24-character lowercase hex object id. Asserting
+# the shape rather than excluding known-bad values is what stops YAML scalars like
+# `null`, `true` or `no` from being read as ids, without needing a list of literals
+# that is always one entry short. Lowercase only, matching what the API emits: the
+# catalog is keyed on the id verbatim, so accepting a capitalized spelling here
+# would hand the lookup a key it can never find.
+DEPLOYMENT_ID_RE = re.compile(r"[0-9a-f]{24}")
 
 
 def is_deployment_id(value: str) -> bool:
