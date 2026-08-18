@@ -11,6 +11,14 @@ Each entry should be prefixed with the affected skill folder name (for example,
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-08-13
+
+### Fixed
+- `datarobot-agent-assist`: `LLM_DEFAULT_MODEL` now gets the `datarobot/`-prefixed `llm_default_model` value, not the catalog `llmId` the gateway 404s on. `setup_template.py` refuses an `llmId`; `api_model` stays unprefixed for the on-the-wire rehearsal.
+- `datarobot-agent-assist`: The model table leads with `LLM_DEFAULT_MODEL` (not the unusable `llmId`) and gives the deployment id its own column, shown only when a deployed entry is present.
+- `datarobot-agent-assist`: The dress rehearsal strips the `datarobot/` prefix before reading a provider, so a prefixed spec keeps its cross-provider guard instead of matching nothing and rehearsing against an arbitrary catalog pick.
+- `datarobot-agent-assist`: `setup_template.py` verifies the model with a direct catalog API call (not `dr llm-gateway list`, which can fall back to a stored profile and answer about a different instance), rejects characters that would break the `.env` line, and treats a disabled gateway as a cue to pick a deployed LLM.
+
 ## [1.5.0] - 2026-08-10
 
 ### Added
