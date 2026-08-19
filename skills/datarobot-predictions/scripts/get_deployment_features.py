@@ -31,7 +31,7 @@ def get_deployment_features(deployment_id: str) -> dict:
     # Initialize client
     client = dr.Client(
         token=os.getenv("DATAROBOT_API_TOKEN"),
-        endpoint=os.getenv("DATAROBOT_ENDPOINT", "https://app.datarobot.com"),
+        endpoint=os.getenv("DATAROBOT_ENDPOINT"),
     )
 
     deployment = dr.Deployment.get(deployment_id)

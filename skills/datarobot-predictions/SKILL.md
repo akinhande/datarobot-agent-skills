@@ -352,7 +352,7 @@ import os
 # Initialize client with API credentials
 client = dr.Client(
     token=os.getenv("DATAROBOT_API_TOKEN"),
-    endpoint=os.getenv("DATAROBOT_ENDPOINT", "https://app.datarobot.com"),
+    endpoint=os.getenv("DATAROBOT_ENDPOINT"),
 )
 ```
 

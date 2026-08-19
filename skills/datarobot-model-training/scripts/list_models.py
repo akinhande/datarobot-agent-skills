@@ -32,7 +32,7 @@ def list_models(project_id: str, sort_by: str = "validation") -> dict:
     # Initialize client
     client = dr.Client(
         token=os.getenv("DATAROBOT_API_TOKEN"),
-        endpoint=os.getenv("DATAROBOT_ENDPOINT", "https://app.datarobot.com"),
+        endpoint=os.getenv("DATAROBOT_ENDPOINT"),
     )
 
     models = dr.Model.list(project_id)

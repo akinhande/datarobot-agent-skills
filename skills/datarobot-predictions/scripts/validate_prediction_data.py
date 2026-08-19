@@ -33,7 +33,7 @@ def validate_prediction_data(deployment_id: str, file_path: str) -> dict:
     # Initialize client
     client = dr.Client(
         token=os.getenv("DATAROBOT_API_TOKEN"),
-        endpoint=os.getenv("DATAROBOT_ENDPOINT", "https://app.datarobot.com"),
+        endpoint=os.getenv("DATAROBOT_ENDPOINT"),
     )
 
     deployment = dr.Deployment.get(deployment_id)
