@@ -61,8 +61,12 @@ def list_models(project_id: str, sort_by: str = "validation") -> dict:
     # (e.g. {"AUC": {"validation": 0.81, "crossValidation": 0.80, ...}}), so read
     # the validation score rather than treating the metric value as a scalar.
     def validation_score(model_info: dict, metric: str, default: float) -> float:
-        scores = model_info.get("metrics", {}).get(metric)
-        return scores.get("validation", default) if isinstance(scores, dict) else default
+        scores = (model_info.get("metrics") or {}).get(metric)
+        if not isinstance(scores, dict):
+            return default
+        score = scores.get("validation")
+        # A partition key can exist with a null score; keep the sort key numeric.
+        return default if score is None else score
 
     if sort_by == "AUC" and model_list:
         model_list.sort(key=lambda x: validation_score(x, "AUC", 0), reverse=True)

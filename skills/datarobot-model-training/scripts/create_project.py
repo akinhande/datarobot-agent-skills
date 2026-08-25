@@ -68,6 +68,8 @@ def create_project(
             )
             result["target"] = target_column
             result["target_set"] = True
+            # AutoPilot has advanced the project past "aim"; refresh the reported stage.
+            result["stage"] = project.stage
         except (
             dr.errors.AppPlatformError,
             dr.errors.AsyncTimeoutError,
