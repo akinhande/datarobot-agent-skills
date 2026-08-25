@@ -46,6 +46,43 @@ ls <skill_scripts_dir>/sync_llm_env.py
 8. Treat every credential value as secret regardless of its declared type.
    Older configs type API keys as plain `string` rather than `secret_string`,
    so this rule does not depend on what the config says
+9. Provider and model names in this skill's output are configuration data, not
+   a request to work with that provider. Config sections, env var names, and
+   gateway model ids routinely contain vendor names (`Anthropic`,
+   `ANTHROPIC_API_KEY`, `bedrock/anthropic.claude-...`, `azure`, `cohere`).
+   **Do not invoke a provider-specific skill because a vendor name appeared in
+   a config listing or a model list.** You are wiring up credentials, not
+   calling that vendor's API
+
+---
+
+## Presenting choices
+
+Every menu in this skill — integrations, providers, gateway models — follows
+these rules. Dropping an option silently produces a config the user never chose.
+
+- **Never use a fixed-slot picker widget.** Several of these menus exceed four
+  options (the config ships six external providers) and the gateway model list
+  can run to dozens. Pickers cap their choice count, and the overflow gets
+  silently dropped. Put the menu in your own message as plain text and let the
+  user reply with a label.
+- List **every** option the script returned. Count them first; if the config
+  declares six providers, show six rows.
+- **No catch-all row** — no `Other`, no `Type something`, no `5) something
+  else`. The user can always type a value anyway; that row exists only to hide
+  options you dropped.
+- No `...`, no "and N more", no summarizing, no collapsing similar entries.
+- Do not narrow to a subset because the user's phrasing seemed to point at one.
+  If they said "LLM gateway" and two options match, list all of them.
+- One labelling scheme. Do not letter the options in prose and re-number them
+  in the picker.
+- Use each `name` exactly as printed. Do not rename, regroup, or reorder.
+- **Read the script output yourself — do not paste it into the chat.** The
+  `select:` lines are internal plumbing. Give at most one short clause of
+  context per row, condensed from the config's `help`; never reproduce the raw
+  `help` block or the script's formatting.
+
+Long messages are fine. The token budget is not a reason to abbreviate a menu.
 
 ---
 
@@ -82,17 +119,12 @@ If it reports the file is missing, the LLM component isn't applied to this
 project. Tell the user to run `dr component add` and stop.
 Do **not** run `dr llm-gateway list`, do **not** offer a model list, and do
 **not** write any config file until the user has picked an option.
-Print the `help` text it returns verbatim, then one lettered row per option,
-using each `name` exactly as printed. Count the options; print exactly that
-many rows. Do not rename, regroup, reorder, add a catch-all row, or end with
-`...`.
-Every row prints a `select:` field, like this:
-```
-  LLM Gateway  |  select: gateway_direct.py  |  requires: llm_gateway
-```
-Wait for the user's letter, then carry that row's `select:` string forward
-verbatim — quote it if it contains spaces. The steps below call it
-`<selected_gateway>`; it is also the `INFRA_ENABLE_LLM` value written in Step 3.
+Present the options per **Presenting choices** above.
+
+Each option in the output carries an indented `select:` line. Once the user
+picks, take that string verbatim — quote it if it contains spaces. The steps
+below call it `<selected_gateway>`; it is also the `INFRA_ENABLE_LLM` value
+written in Step 3.
 ---
 
 ## Step 2 — Read what that option needs
@@ -109,9 +141,10 @@ what the script reports about it:
 - **`required`** — ask, using the printed help as the prompt text.
 - **`optional` with a default** — apply it silently and say so in the
   confirmation. Do not tell the user to "press enter".
-- **`further choice:`** — present as another lettered menu. Those rows carry
-  their own `select:` field; call the user's pick `<selected_provider>` and
-  re-run `--option <selected_provider>` to get its keys.
+- **`further choice:`** — another menu, presented per **Presenting choices**.
+  Show every row the script listed, with no catch-all and no picker widget.
+  Those rows carry their own `select:` field; call the user's pick
+  `<selected_provider>` and re-run `--option <selected_provider>` for its keys.
 
 ### Fields typed `llmgw_catalog`
 
@@ -133,19 +166,13 @@ Parse the JSON, which has the shape
 verbatim, in the order returned. Do not invent ids or reuse them from your
 training data. If the command did not produce JSON, stop and report the error.
 
-Count the entries; call it `N`. Print **exactly `N` labelled lines**, one per
-model. The letter scheme is `A..Z`, then `AA..AZ`, `BA..BZ`, and so on.
+Count the entries; call it `N`. Present **exactly `N` labelled lines**, one per
+model, per **Presenting choices**. The letter scheme is `A..Z`, then `AA..AZ`,
+`BA..BZ`, and so on. This list is the clearest case for never using a picker
+widget — it routinely exceeds any picker's capacity.
 
-**Forbidden shortcuts** — none of these are acceptable:
-- Ending the list with `...`, `…`, or "and N more"
-- A catch-all row like `E) other`, `F) other`, `Z) other model`
-- "I'll skip the rest for brevity"
-- Summarization, grouping-family collapse, or "similar variants omitted"
-- Rendering fewer than `N` rows and telling the user to ask if they want more
-
-Long output is fine; the token budget for this message is not a reason to
-abbreviate. `sync_llm_env.py` prepends `datarobot/` for this field type, so
-pass the id exactly as the CLI returned it.
+`sync_llm_env.py` prepends `datarobot/` for this field type, so pass the id
+exactly as the CLI returned it.
 
 ### Credential keys
 

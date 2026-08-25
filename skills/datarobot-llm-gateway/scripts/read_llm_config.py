@@ -127,11 +127,8 @@ def main() -> int:
         print(payload["help"], "\n")
         print("options:")
         for option in options(entry):
-            print(
-                f"  {option.get('name', selector(option))}"
-                f"  |  select: {selector(option)}"
-                f"  |  requires: {option.get('requires')}"
-            )
+            print(f"  {option.get('name', selector(option))}")
+            print(f"      select: {selector(option)}")
         return 0
 
     section = resolve(config, args.option)
@@ -150,11 +147,8 @@ def main() -> int:
         if options(entry):
             print(f"  further choice: {entry.get('key') or entry.get('env')}")
             for option in options(entry):
-                print(
-                    f"      {option.get('name', selector(option))}"
-                    f"  |  select: {selector(option)}"
-                    f"  |  requires: {option.get('requires')}"
-                )
+                print(f"      {option.get('name', selector(option))}")
+                print(f"          select: {selector(option)}")
             print("      re-run with --option <select> for its env vars")
         elif entry.get("env"):
             print(f"  {entry['env']}  ({describe(entry)})")
