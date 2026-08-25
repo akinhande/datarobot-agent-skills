@@ -11,6 +11,11 @@ Each entry should be prefixed with the affected skill folder name (for example,
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-08-25
+
+### Fixed
+- `datarobot-predictions`: Install `datarobot-predict` alongside `datarobot` in the skill setup. The real-time prediction and prediction-explanation examples import `datarobot_predict`, a separate PyPI package that is not a dependency of `datarobot`, so following the skill with `pip install datarobot` alone failed with `ModuleNotFoundError: No module named 'datarobot_predict'`.
+
 ## [1.5.1] - 2026-08-13
 
 ### Fixed
