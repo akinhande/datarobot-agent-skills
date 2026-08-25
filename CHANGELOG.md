@@ -14,7 +14,7 @@ Each entry should be prefixed with the affected skill folder name (for example,
 ## [1.5.2] - 2026-08-25
 
 ### Added
-- `datarobot-llm-gateway`:  Added a new skill which helps setting up llm gateway, it lists available llm models `dr llm-gateway list --output-format json` directly from `SKILL.md`. The CLI handles auth via its own credential store, and syncs env variables.
+- `datarobot-llm-gateway`:  Added a new skill which helps setting up llm gateway, it lists available llm models directly from `SKILL.md`. The CLI handles auth via its own credential store, and syncs env variables.
 
 ## [1.5.1] - 2026-08-13
 
