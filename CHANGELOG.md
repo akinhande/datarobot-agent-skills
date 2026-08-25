@@ -51,9 +51,6 @@ Each entry should be prefixed with the affected skill folder name (for example,
 
 ### Changed
 - `datarobot-agent-assist-simulate`: UX improvements — domain-aware Q2, grouped scenario list, `dr dotenv update` in auth setup, live progress narration during swarm run.
-## [1.4.1] - 2026-07-31
-
-### Changed
 
 ## [1.4.0] - 2026-07-28
 
