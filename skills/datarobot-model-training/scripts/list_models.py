@@ -41,7 +41,7 @@ def list_models(project_id: str, sort_by: str = "validation") -> dict:
     model_list = []
     for model in models:
         try:
-            metrics = model.get_metrics()
+            metrics = model.metrics
             model_info = {
                 "model_id": model.id,
                 "model_type": model.model_type,
@@ -57,11 +57,17 @@ def list_models(project_id: str, sort_by: str = "validation") -> dict:
             }
             model_list.append(model_info)
 
-    # Sort models
+    # Sort models. model.metrics maps each metric to a dict of partition scores
+    # (e.g. {"AUC": {"validation": 0.81, "crossValidation": 0.80, ...}}), so read
+    # the validation score rather than treating the metric value as a scalar.
+    def validation_score(model_info: dict, metric: str, default: float) -> float:
+        scores = model_info.get("metrics", {}).get(metric)
+        return scores.get("validation", default) if isinstance(scores, dict) else default
+
     if sort_by == "AUC" and model_list:
-        model_list.sort(key=lambda x: x.get("metrics", {}).get("AUC", 0), reverse=True)
+        model_list.sort(key=lambda x: validation_score(x, "AUC", 0), reverse=True)
     elif sort_by == "RMSE" and model_list:
-        model_list.sort(key=lambda x: x.get("metrics", {}).get("RMSE", float("inf")))
+        model_list.sort(key=lambda x: validation_score(x, "RMSE", float("inf")))
 
     return {
         "project_id": project_id,
