@@ -15,7 +15,7 @@ Each entry should be prefixed with the affected skill folder name (for example,
 
 ### Fixed
 
-- All skills: removed hardcoded default "https://app.datarobot.com" endpoint from helper scripts and examples. Dropping it lets `dr.Client()` apply its own resolution order (arguments, then environment, then `drconfig.yaml`), which already defaults to the public cloud endpoint correctly.
+- All skills: helper scripts and examples now call plain `dr.Client()` instead of re-reading `DATAROBOT_API_TOKEN` and `DATAROBOT_ENDPOINT` and passing them back in. The SDK reads those variables itself and then falls back to `~/.config/datarobot/drconfig.yaml`, so this fixes setups where only `drconfig.yaml` is configured — what `dr auth login` (per `datarobot-setup`) writes. Previously most sites hardcoded a `"https://app.datarobot.com"` endpoint default, which supplied an endpoint with no matching token and failed with `ValueError: Token must be specified if endpoint is specified` (and was missing the `/api/v2` suffix); `datarobot-model-explainability` used `os.environ["DATAROBOT_API_TOKEN"]` and failed the same setup with `KeyError`.
 
 ## [1.5.1] - 2026-08-13
 

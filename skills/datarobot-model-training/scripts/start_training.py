@@ -12,7 +12,6 @@ Modes: Quick, Comprehensive, Manual (default: Quick)
 """
 
 import json
-import os
 import sys
 
 import datarobot as dr
@@ -30,10 +29,7 @@ def start_training(project_id: str, mode: str = "Quick") -> dict:
         Training job information
     """
     # Initialize client
-    client = dr.Client(
-        token=os.getenv("DATAROBOT_API_TOKEN"),
-        endpoint=os.getenv("DATAROBOT_ENDPOINT"),
-    )
+    dr.Client()
 
     project = dr.Project.get(project_id)
 

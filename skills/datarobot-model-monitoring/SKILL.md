@@ -122,12 +122,9 @@ Use these DataRobot SDK and MLOps API methods for monitoring:
 ### Pattern 1: Health check
 ```python
 import datarobot as dr
-import os
 
 # Initialize client
-client = dr.Client(
-    token=os.getenv("DATAROBOT_API_TOKEN"), endpoint=os.getenv("DATAROBOT_ENDPOINT")
-)
+dr.Client()
 
 # Get deployment
 deployment = dr.Deployment.get("abc123")
@@ -214,12 +211,8 @@ pip install datarobot
 
 ```python
 import datarobot as dr
-import os
 
-client = dr.Client(
-    token=os.getenv("DATAROBOT_API_TOKEN"),
-    endpoint=os.getenv("DATAROBOT_ENDPOINT"),
-)
+dr.Client()
 ```
 
 **Note**: Some monitoring features require DataRobot MLOps API access. Check your DataRobot plan for MLOps availability.
