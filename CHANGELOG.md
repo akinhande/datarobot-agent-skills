@@ -11,10 +11,10 @@ Each entry should be prefixed with the affected skill folder name (for example,
 
 ## [Unreleased]
 
-## [1.5.2] - 2026-08-25
+## [1.5.3] - 2026-08-25
 
 ### Fixed
-- `datarobot-predictions`: Install `datarobot-predict` alongside `datarobot` in the skill setup. The real-time prediction and prediction-explanation examples import `datarobot_predict`, a separate PyPI package that is not a dependency of `datarobot`, so following the skill with `pip install datarobot` alone failed with `ModuleNotFoundError: No module named 'datarobot_predict'`.
+- `datarobot-model-training`: Update the sample code and helper scripts for the current `datarobot` SDK (3.x). `set_target()` → `analyze_and_model()` (sets the target and starts AutoPilot), the removed `Project.start(autopilot_on=, max_wait=)` → `wait_for_autopilot()`, `project.status` → `project.stage`, `model.get_metrics()` → `model.metrics`, and select the recommended model via `ModelRecommendation.get(project.id).get_model()` instead of a broken `max(models, key=lambda m: m.metrics.get("AUC", 0))` that treats a per-partition dict as a scalar. `list_models.py` now sorts on the validation partition score (null-safe).
 
 ## [1.5.1] - 2026-08-13
 
