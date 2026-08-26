@@ -49,17 +49,23 @@ def create_project(
     result = {
         "project_id": project.id,
         "project_name": project.project_name,
-        "status": project.status,
+        "stage": project.stage,
         "dataset_id": dataset_id,
         "use_case_id": use_case_id,
     }
 
-    # Set target if provided
+    # Set target and start AutoPilot if a target was provided.
+    # analyze_and_model() replaces the deprecated set_target() in SDK 3.x and both
+    # sets the target and launches AutoPilot in one call.
     if target_column:
         try:
-            project.set_target(target=target_column, mode=dr.AUTOPILOT_MODE.QUICK)
+            project.analyze_and_model(
+                target=target_column, mode=dr.AUTOPILOT_MODE.QUICK, worker_count=-1
+            )
             result["target"] = target_column
             result["target_set"] = True
+            # AutoPilot has advanced the project past "aim"; refresh the reported stage.
+            result["stage"] = project.stage
         except (
             dr.errors.AppPlatformError,
             dr.errors.AsyncTimeoutError,

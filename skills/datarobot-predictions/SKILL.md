@@ -105,7 +105,7 @@ Execute predictions using various methods:
 This skill guides you to use the DataRobot Python SDK directly. Install the SDK if needed:
 
 ```bash
-pip install datarobot
+pip install datarobot datarobot-predict
 ```
 
 ### Key SDK Operations
@@ -333,7 +333,7 @@ Common errors and solutions:
 ### Install DataRobot SDK
 
 ```bash
-pip install datarobot
+pip install datarobot datarobot-predict
 ```
 
 ### Initialize Client
