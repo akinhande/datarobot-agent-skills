@@ -12,7 +12,6 @@ Sort options: AUC, RMSE, accuracy (default: by validation score)
 """
 
 import json
-import os
 import sys
 
 import datarobot as dr
@@ -30,10 +29,7 @@ def list_models(project_id: str, sort_by: str = "validation") -> dict:
         List of models with metrics
     """
     # Initialize client
-    client = dr.Client(
-        token=os.getenv("DATAROBOT_API_TOKEN"),
-        endpoint=os.getenv("DATAROBOT_ENDPOINT", "https://app.datarobot.com"),
-    )
+    dr.Client()
 
     models = dr.Model.list(project_id)
 

@@ -170,9 +170,7 @@ import datarobot as dr
 import os
 
 # Initialize client
-client = dr.Client(
-    token=os.getenv("DATAROBOT_API_TOKEN"), endpoint=os.getenv("DATAROBOT_ENDPOINT")
-)
+dr.Client()
 
 # Reuse an existing Use Case if the user gave us one, otherwise create a new one
 existing_use_case_id = os.getenv("DATAROBOT_USE_CASE_ID")  # or ask the user for it
@@ -287,12 +285,8 @@ pip install datarobot
 
 ```python
 import datarobot as dr
-import os
 
-client = dr.Client(
-    token=os.getenv("DATAROBOT_API_TOKEN"),
-    endpoint=os.getenv("DATAROBOT_ENDPOINT", "https://app.datarobot.com"),
-)
+dr.Client()
 ```
 
 ## Resources
