@@ -103,7 +103,7 @@ Use these DataRobot SDK and MLOps API methods for monitoring:
 - `deployment.get_prediction_results(...)` - Retrieve recorded prediction results (if enabled)
 
 **Model Performance**:
-- `model.get_metrics()` - Get model performance metrics
+- `model.metrics` - Model performance metrics (dict of `{metric: {partition: score}}`)
 - `model.get_roc_curve()` - Get ROC curve for comparison
 
 **Note**: Some monitoring features may require DataRobot MLOps API. See the [Common Patterns](#common-patterns) section below for examples.
@@ -130,9 +130,10 @@ dr.Client()
 deployment = dr.Deployment.get("abc123")
 
 # Get service stats (requires MLOps monitoring to be enabled)
+# ServiceStats exposes values via the .metrics dict, not as attributes.
 stats = deployment.get_service_stats()
-print(f"Prediction count: {stats.prediction_count}")
-print(f"Mean response time (ms): {stats.mean_response_time}")
+print(f"Prediction count: {stats.metrics['totalPredictions']}")
+print(f"Mean response time (ms): {stats.metrics['responseTime']}")
 
 # Get recorded prediction results (if available / enabled)
 try:
