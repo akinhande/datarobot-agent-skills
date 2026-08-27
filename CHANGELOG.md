@@ -11,6 +11,18 @@ Each entry should be prefixed with the affected skill folder name (for example,
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-08-26
+
+### Added
+- `datarobot-llm-gateway`: The gateway-model recommendation step reads `agent_spec.md` (when present) to flag a recommended model family/tier based on the agent's purpose and any stated cost or latency constraint, mirroring the recommendation logic in `datarobot-agent-assist`'s `llm-selection.md`. Every entry is still listed; the recommendation only marks a row.
+- `datarobot-llm-gateway`: Step 1 now detects and reports the currently configured integration (and, for options with a further provider choice, which of its credential fields are already set in `.env`) before presenting the menu, so switching or editing an existing setup is a starting point instead of a blind re-entry.
+- `datarobot-llm-gateway`: `.env` is backed up (`.env.bak.<timestamp>`) before Step 3 overwrites it via `sync_llm_env.py`.
+
+### Changed
+- `datarobot-llm-gateway`: Consolidated the menu-presentation rules (integrations, providers, gateway models) into one "Presenting choices" section — no fixed-slot picker widgets, no catch-all row, list every option exactly as returned.
+- `datarobot-llm-gateway`: Added a hard rule that provider/model names surfaced in config listings or model lists are configuration data, not a request to invoke that provider's skill.
+- `datarobot-llm-gateway`: `read_llm_config.py` drops the `requires:` field and prints each option's `select:` value on its own indented line instead of a piped `name | select | requires` row.
+
 ## [1.5.2] - 2026-08-25
 
 ### Added
