@@ -119,6 +119,34 @@ If it reports the file is missing, the LLM component isn't applied to this
 project. Tell the user to run `dr component add` and stop.
 Do **not** run `dr llm-gateway list`, do **not** offer a model list, and do
 **not** write any config file until the user has picked an option.
+
+### Check what's already configured
+
+The `default:` line in the script's output is the schema's declared fallback,
+**not** necessarily the project's live setting — don't conflate the two.
+Before presenting the menu, find the actual current value:
+
+```shell
+grep -E '^INFRA_ENABLE_LLM=' .env
+```
+
+- If `.env` doesn't exist yet or has no match, tell the user no LLM
+  integration is configured yet.
+- If it matches, map the value against the `select:` lines the script just
+  printed to report the current integration by its friendly name (e.g.
+  `blueprint_with_external_llm.py` → "External LLM"), not the raw filename.
+- If that option has a `further choice:` (a provider), also run
+  `python <skill_scripts_dir>/read_llm_config.py --option <current_value>`
+  and grep `.env` for the **names** of the env vars it lists, to report which
+  are already populated. Report only whether each key is set — per Hard
+  Rule 8, never print the value of a credential-shaped key, even to confirm
+  it's set.
+
+State this summary — e.g. "You're currently on `<friendly name>`[, provider
+`<provider>`], with `<N>` of `<M>` fields already set" — before showing the
+menu, so the user can decide to switch entirely or just change specific
+fields on the current integration.
+
 Present the options per **Presenting choices** above.
 
 Each option in the output carries an indented `select:` line. Once the user
@@ -174,6 +202,28 @@ widget — it routinely exceeds any picker's capacity.
 `sync_llm_env.py` prepends `datarobot/` for this field type, so pass the id
 exactly as the CLI returned it.
 
+### Recommending
+
+Before presenting the list, check whether `agent_spec.md` exists at the
+project root. If it does, read it for context — the agent's purpose, task
+complexity, and any stated cost or latency constraint — and use that to flag
+one entry as recommended. This mirrors the recommendation logic in the
+`datarobot-agent-assist` skill's `llm-selection.md`:
+
+- Prefer a `gpt-5`, `claude-4-5`/`4-6`/`4-8`, or `gemini-2.5`/`3` family
+  gateway model unless the spec or the user states a cost or latency
+  constraint.
+- If the spec calls for low cost or latency, prefer the `mini`/`haiku`/`flash`
+  tier of that same family instead.
+- If no gateway entries appear at all (only `deployed` ones), recommend a
+  deployed entry instead and say why — the LLM Gateway is disabled or empty
+  on this instance, which is normal for an on-prem install, not an error.
+- **Still list every entry** per **Presenting choices** — mark the
+  recommended row (e.g. append "(recommended)") rather than omitting the
+  rest. Recommending never justifies narrowing the menu.
+- No `agent_spec.md`? Skip the read and recommend using only the
+  family-preference heuristics above.
+
 ### Credential keys
 
 **Announce them up front** — do not let the user discover them via the sync
@@ -197,6 +247,12 @@ file yourself, do not `cat` it, and do not accept secret values in chat.
 ---
 
 ## Step 3 — Sync into `.env`
+
+First back up the current `.env` (sync overwrites it, and `.env` isn't in git):
+
+```shell
+cp .env .env.bak.$(date +%Y%m%d%H%M%S)
+```
 
 Run the sync script with the values collected in Step 2 as CLI args. No
 intermediate config file, no JSON to write.
