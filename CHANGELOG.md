@@ -14,19 +14,27 @@ Each entry should be prefixed with the affected skill folder name (for example,
 ## [1.6.0] - 2026-08-26
 
 ### Added
-- `datarobot-llm-gateway`: The gateway-model recommendation step reads `agent_spec.md` (when present) to flag a recommended model family/tier based on the agent's purpose and any stated cost or latency constraint, mirroring the recommendation logic in `datarobot-agent-assist`'s `llm-selection.md`. Every entry is still listed; the recommendation only marks a row.
-- `datarobot-llm-gateway`: Step 1 now detects and reports the currently configured integration (and, for options with a further provider choice, which of its credential fields are already set in `.env`) before presenting the menu, so switching or editing an existing setup is a starting point instead of a blind re-entry.
-- `datarobot-llm-gateway`: `.env` is backed up (`.env.bak.<timestamp>`) before Step 3 overwrites it via `sync_llm_env.py`.
-
-### Changed
-- `datarobot-llm-gateway`: Consolidated the menu-presentation rules (integrations, providers, gateway models) into one "Presenting choices" section — no fixed-slot picker widgets, no catch-all row, list every option exactly as returned.
-- `datarobot-llm-gateway`: Added a hard rule that provider/model names surfaced in config listings or model lists are configuration data, not a request to invoke that provider's skill.
-- `datarobot-llm-gateway`: `read_llm_config.py` drops the `requires:` field and prints each option's `select:` value on its own indented line instead of a piped `name | select | requires` row.
+- `datarobot-llm-gateway`: New skill for configuring the LLM selection within app templates and for other local development uses
 
 ## [1.5.2] - 2026-08-25
 
 ### Added
 - `datarobot-llm-gateway`:  Added a new skill which helps setting up llm gateway, it lists available llm models directly from `SKILL.md`. The CLI handles auth via its own credential store, and syncs env variables.
+## [1.5.5] - 2026-08-26
+
+### Fixed
+- `datarobot-model-monitoring`: The Pattern 1 health-check example read `stats.prediction_count` and `stats.mean_response_time`, which do not exist on the SDK 3.x `ServiceStats` object (`AttributeError`). Read them from the `.metrics` dict instead (`stats.metrics["totalPredictions"]`, `stats.metrics["responseTime"]`). Also corrected the SDK reference list: `model.get_metrics()` → `model.metrics` (a dict of `{metric: {partition: score}}`); `get_metrics()` does not exist.
+
+## [1.5.4] - 2026-08-25
+
+### Fixed
+
+- All skills: helper scripts and examples now call plain `dr.Client()` instead of re-reading `DATAROBOT_API_TOKEN` and `DATAROBOT_ENDPOINT` and passing them back in. The SDK reads those variables itself and then falls back to `~/.config/datarobot/drconfig.yaml`, so this fixes setups where only `drconfig.yaml` is configured — what `dr auth login` (per `datarobot-setup`) writes. Previously most sites hardcoded a `"https://app.datarobot.com"` endpoint default, which supplied an endpoint with no matching token and failed with `ValueError: Token must be specified if endpoint is specified` (and was missing the `/api/v2` suffix); `datarobot-model-explainability` used `os.environ["DATAROBOT_API_TOKEN"]` and failed the same setup with `KeyError`.
+
+## [1.5.3] - 2026-08-25
+
+### Fixed
+- `datarobot-model-training`: Update the sample code and helper scripts for the current `datarobot` SDK (3.x). `set_target()` → `analyze_and_model()` (sets the target and starts AutoPilot), the removed `Project.start(autopilot_on=, max_wait=)` → `wait_for_autopilot()`, `project.status` → `project.stage`, `model.get_metrics()` → `model.metrics`, and select the recommended model via `ModelRecommendation.get(project.id).get_model()` instead of a broken `max(models, key=lambda m: m.metrics.get("AUC", 0))` that treats a per-partition dict as a scalar. `list_models.py` now sorts on the validation partition score (null-safe).
 
 ## [1.5.1] - 2026-08-13
 
