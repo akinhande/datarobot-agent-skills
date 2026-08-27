@@ -1,5 +1,5 @@
 ---
-name: datarobot-llm-gateway
+name: datarobot-agent-llm-selection
 description: >-
   Use when the user wants to configure LLM integration for a DataRobot agent
   application. This skill helps to change LLM model, switch between the LLM
